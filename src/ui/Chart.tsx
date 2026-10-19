@@ -111,14 +111,18 @@ export function EChart({ option, height = 280, onReady, onClick }: { option: ech
     const c = echarts.init(ref.current, undefined, { renderer: 'canvas' });
     inst.current = c;
     c.on('click', (p: { name?: string }) => { if (p?.name) clickRef.current?.(p.name); });
-    const ro = new ResizeObserver(() => c.resize());
+    const ro = new ResizeObserver(() => { try { c.resize(); } catch (e) { console.warn('chart resize', e); } });
     ro.observe(ref.current);
     onReady?.(c);
     return () => { ro.disconnect(); c.dispose(); inst.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { inst.current?.setOption(option, true); }, [option]);
-  return <div ref={ref} style={{ width: '100%', height }} />;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    // one bad chart must never take the whole dashboard down
+    try { inst.current?.setOption(option, true); setFailed(false); } catch (e) { console.warn('chart render failed', e); setFailed(true); try { inst.current?.clear(); } catch { /* ignore */ } }
+  }, [option]);
+  return <div style={{ position: 'relative', width: '100%', height }}><div ref={ref} style={{ width: '100%', height }} />{failed && <div className="muted small" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>This chart could not be drawn for the current data</div>}</div>;
 }
 
 export function ChartCard({ title, sub, spec, height = 280, onCategoryClick, note, themeKey, className, id }: {
@@ -211,5 +215,7 @@ export function Radar({ indicators, values, height = 300, themeKey }: { indicato
     radar: { indicator: indicators.map((n) => ({ name: n, max: 100 })), radius: '62%', axisName: { color: cssVar('--text-2'), fontSize: 10.5 }, splitLine: { lineStyle: { color: cssVar('--grid') } }, splitArea: { show: false }, axisLine: { lineStyle: { color: cssVar('--grid') } } },
     series: [{ type: 'radar', data: [{ value: values.map((v) => v ?? 0), name: 'Score', areaStyle: { color: seriesColor(0), opacity: 0.18 }, lineStyle: { color: seriesColor(0), width: 2 }, itemStyle: { color: seriesColor(0) } }] }],
   }), [indicators, values, themeKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ECharts' radar needs at least 3 axes (fewer crashes its layout)
+  if (indicators.length < 3) return <div className="muted small" style={{ height, display: 'grid', placeItems: 'center', textAlign: 'center' }}>Not enough scored dimensions for a radar yet — upload more data.</div>;
   return <EChart option={option} height={height} />;
 }

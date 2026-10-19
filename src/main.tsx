@@ -15,7 +15,7 @@ window.addEventListener('vite:preloadError', () => {
 try { setTimeout(() => sessionStorage.removeItem('ingoviq.reloaded'), 10000); } catch { /* storage blocked */ }
 
 /** Never a blank page: show what went wrong and a way out (reset the data saved in this browser). */
-class Guard extends Component<{ children: ReactNode }, { err: Error | null }> {
+export class Guard extends Component<{ children: ReactNode }, { err: Error | null }> {
   state = { err: null as Error | null };
   static getDerivedStateFromError(err: Error) { return { err }; }
   componentDidCatch(err: Error) { console.error('INGOVIQ crashed:', err); }

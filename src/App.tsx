@@ -5,6 +5,7 @@ import { buildDatasetFromFiles, autoInputs, mergeInputs } from './engine/ingest/
 import { browserPdfLoader } from './ui/pdfLoader';
 import { type Incoming, ACCEPT, fromFileList, pickDirectory } from './ui/fileIntake';
 import { LoanFile } from './ui/pages/LoanFile';
+import { PageGuard } from './ui/PageGuard';
 import { readWorkbook, detectKind, type FileKind } from './engine/workbook';
 import { sortFYs } from './engine/utils';
 import type { PageCtx } from './ui/ctx';
@@ -364,12 +365,12 @@ export default function App() {
                     </div>
                   )}
                   {hidden.includes(`page:${page}`) && <div className="note warn">This page is hidden — it is left out of the tab bar, PDF and HTML. <button className="btn small" onClick={() => toggleHidden(`page:${page}`)}>Show page</button></div>}
-                  <HideCtx.Provider value={hideFor(page)}>{renderPage(page, ctx)}</HideCtx.Provider>
+                  <HideCtx.Provider value={hideFor(page)}><PageGuard name={page}>{renderPage(page, ctx)}</PageGuard></HideCtx.Provider>
                 </>
               )}
-              {view === 'data' && hasData && <DataView {...ctx} />}
-              {view === 'model' && hasData && <Measures {...ctx} measures={measures} setMeasures={setMeasures} />}
-              {view === 'settings' && <Settings {...ctx} />}
+              {view === 'data' && hasData && <PageGuard name="Data view"><DataView {...ctx} /></PageGuard>}
+              {view === 'model' && hasData && <PageGuard name="Model"><Measures {...ctx} measures={measures} setMeasures={setMeasures} /></PageGuard>}
+              {view === 'settings' && <PageGuard name="Settings"><Settings {...ctx} /></PageGuard>}
               {view === 'guide' && <Guide />}
               {!hasData && (view === 'report' || view === 'data' || view === 'model') && <div className="note">Load files from <b>Get data</b> first.</div>}
             </div>
@@ -429,7 +430,7 @@ export default function App() {
           {PAGES.filter((p) => (p !== 'My Visuals' || visuals.length) && !hidden.includes(`page:${p}`) && (p !== 'Loan File' || ds.docs?.length)).map((p) => (
             <div key={p} className="page export-sec" data-title={p}>
               <div className="page-head"><div><h1>{p}</h1><div className="sub">{PAGE_SUB[p]} · {a.company}</div></div></div>
-              <HideCtx.Provider value={hideFor(p, true)}>{renderPage(p, { ...ctx, themeKey, exporting: true })}</HideCtx.Provider>
+              <HideCtx.Provider value={hideFor(p, true)}><PageGuard name={p}>{renderPage(p, { ...ctx, themeKey, exporting: true })}</PageGuard></HideCtx.Provider>
             </div>
           ))}
         </div></ExportMode.Provider>
