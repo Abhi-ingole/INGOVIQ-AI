@@ -1,0 +1,32 @@
+{
+  "name": "ingoviq-ai",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "INGOVIQ AI - AI-Powered Business Intelligence Platform for credit, financial, GST and banking analysis",
+  "author": "Abhishek Ingole",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "tsx scripts/verify.ts"
+  },
+  "dependencies": {
+    "echarts": "^5.5.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
