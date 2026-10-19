@@ -64,7 +64,8 @@ export function analyseFinancial(fd: FinancialData, inp: ManualInputs): FinAnaly
   const inc = parseDate(fd.profile['Date of Incorporation'] || '') || '';
   const incFYStart = inc ? (+inc.slice(5, 7) >= 4 ? +inc.slice(0, 4) : +inc.slice(0, 4) - 1) : null;
 
-  const b: Record<string, FYMap> = {};
+  // missing keys read as empty maps, so a year with partial data never breaks a formula
+  const b: Record<string, FYMap> = new Proxy({} as Record<string, FYMap>, { get: (t, k: string) => (t[k] ??= {}) });
   const set = (k: string, fy: string, v: number | null) => { (b[k] ||= {})[fy] = v; };
   for (const fy of fys) {
     const g = (k: string) => G(it, k, fy);

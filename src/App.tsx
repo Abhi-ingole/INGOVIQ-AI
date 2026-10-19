@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { analyse, effectiveDataset } from './engine/analyse';
+import { safeAnalyse, effectiveDataset } from './engine/analyse';
 import { DEFAULT_INPUTS, type ManualInputs, type Dataset } from './engine/types';
 import { buildDatasetFromFiles, autoInputs, mergeInputs, selectSources } from './engine/ingest/pack';
 import { browserPdfLoader } from './ui/pdfLoader';
@@ -244,7 +244,7 @@ export default function App() {
   const auto = useMemo(() => autoInputs(ds0), [ds0]);
   const effInp = useMemo(() => mergeInputs({ ...DEFAULT_INPUTS, ...inp }, auto, DEFAULT_INPUTS), [inp, auto]);
   const ds = useMemo(() => effectiveDataset(ds0, effInp), [ds0, effInp]);
-  const a = useMemo(() => analyse(ds, effInp), [ds, effInp]);
+  const a = useMemo(() => safeAnalyse(ds, effInp), [ds, effInp]);
   const hidden = effInp.hidden || [];
   const toggleHidden = useCallback((k: string) => setInpState((s) => { const h = s.hidden || []; const n = { ...s, hidden: h.includes(k) ? h.filter((x) => x !== k) : [...h, k] }; lsSet('ingoviq.inputs', n); return n; }), []);
   const hideFor = (p: string, exp = false): HideState => ({ page: p, hidden, customize: customize && !exp, toggle: toggleHidden });

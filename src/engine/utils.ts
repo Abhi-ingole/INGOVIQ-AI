@@ -51,6 +51,13 @@ export function normFY(v: unknown): string | null {
     const e = 2000 + +m[1];
     return `FY ${e - 1}-${m[1]}`;
   }
+  // year-end dates used as column headers: 2024-03-31, 31-03-2024, 31.03.24, 31 Mar 2024, 'As at March 2024', FY2024 (a bare 'Mar-24' is a month, not a year)
+  const end = (y: number) => `FY ${y - 1}-${String(y % 100).padStart(2, '0')}`;
+  const yy = (t: string) => (t.length === 2 ? 2000 + +t : +t);
+  m = s.match(/^(20\d{2})-03-3[01]/); if (m) return end(+m[1]);
+  m = s.match(/^(?:as (?:at|on)\s*)?3[01][-./ ](?:0?3|mar[a-z]*)[-./ ,]*(20\d{2}|\d{2})$/i); if (m) return end(yy(m[1]));
+  m = s.match(/^(?:as (?:at|on)|year ended|ye|fy ended)\s*(?:31(?:st)?\s*)?mar[a-z]*[-'’ ,.]*(20\d{2}|\d{2})$/i); if (m) return end(yy(m[1]));
+  m = s.match(/^f\.?y\.?\s*(20\d{2})$/i); if (m) return end(+m[1]);
   return null;
 }
 
