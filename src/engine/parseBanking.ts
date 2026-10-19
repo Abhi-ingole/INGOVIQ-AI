@@ -64,6 +64,7 @@ export function parseBanking(wb: Workbook, log: CleaningLog[]): BankingData {
         party: idx.party !== undefined ? str(row[idx.party]) : '',
         account: idx.account !== undefined ? str(row[idx.account]) : 'Primary',
         bank: idx.bank !== undefined ? str(row[idx.bank]) : '',
+        source: `${src} › ${s} row ${r + 1}`,
       });
     }
     if (txns.length) {

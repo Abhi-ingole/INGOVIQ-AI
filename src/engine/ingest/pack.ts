@@ -113,6 +113,7 @@ export async function buildDatasetFromFiles(input: PackFile[], loader: PdfLoader
         if (looksLikeGstr3b(text)) {
           const r = parseGstr3b(pdf);
           if (r) {
+            r.file = baseName(f.path);
             const dup = extra.gstr3b.findIndex((x) => x.gstin === r.gstin && x.period === r.period);
             if (dup >= 0) { doc.status = 'duplicate'; doc.note = `Same return as another file (${r.period})`; if (r.filedOn > extra.gstr3b[dup].filedOn) extra.gstr3b[dup] = r; }
             else { extra.gstr3b.push(r); doc.status = 'used'; doc.note = `${r.gstin} · ${r.period}`; }

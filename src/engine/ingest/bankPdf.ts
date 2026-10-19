@@ -88,10 +88,10 @@ export function parseBankStatement(doc: PdfDoc, fileName: string): ParsedStateme
   const type = /overdraft|cash credit|\bod\b account|\bcc\b account/i.test(head) || (odLimit ?? 0) > 0 ? 'Overdraft / Cash Credit' : 'Current Account';
   const period = head.match(/(?:from\s*:?\s*)(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}).{0,20}?to\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i)?.slice(1).join(' to ') || head.match(/statement (?:type|period)\s*:\s*([^\n]+)/i)?.[1]?.trim() || '';
 
-  const raw: { date: string; desc: string; debit: number; credit: number; balance: number | null; amounts: { v: number; x: number; c: number }[] }[] = [];
+  const raw: { page: number; date: string; desc: string; debit: number; credit: number; balance: number | null; amounts: { v: number; x: number; c: number }[] }[] = [];
   let cols: Cols | null = null;
-  for (const pageItems of doc.pages) {
-    const lines = toLines(pageItems);
+  for (let pageNo = 0; pageNo < doc.pages.length; pageNo++) {
+    const lines = toLines(doc.pages[pageNo]);
     let cur: (typeof raw)[number] | null = null;
     for (let i = 0; i < lines.length; i++) {
       const ln = lines[i];
@@ -120,7 +120,7 @@ export function parseBankStatement(doc: PdfDoc, fileName: string): ParsedStateme
       if (isDate) {
         const date = parseDateAny(DATE_RE.test(first.str.trim()) ? first.str : firstTok);
         if (!date) continue;
-        cur = { date, desc: descText, debit: 0, credit: 0, balance: null, amounts: [] };
+        cur = { page: pageNo + 1, date, desc: descText, debit: 0, credit: 0, balance: null, amounts: [] };
         assign(cur, amounts);
         raw.push(cur);
       } else if (isFooter) {
@@ -153,7 +153,7 @@ export function parseBankStatement(doc: PdfDoc, fileName: string): ParsedStateme
   }
   const txns = seq.map((r) => ({
     date: r.date, month: r.date.slice(0, 7), description: r.desc.replace(/\s+/g, ' ').trim(), debit: r.debit, credit: r.credit, balance: r.balance,
-    category: categoryOf(r.desc, r.debit, r.credit), party: '', account: accNo, bank,
+    category: categoryOf(r.desc, r.debit, r.credit), party: '', account: accNo, bank, source: `${fileName} · p.${r.page}`,
   }));
   return { account: { account: accNo, bank, type, period, sanction: odLimit && odLimit > 0 ? odLimit : null }, txns, method: chrono ? 'chronological' : 'reverse-chronological', balanceMismatches: mismatches };
 }

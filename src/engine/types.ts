@@ -90,6 +90,7 @@ export interface BankTxn {
   party: string;
   account: string;
   bank: string;
+  source?: string; // evidence: file and page / sheet row the entry was read from
 }
 export interface BankAccount {
   account: string;
@@ -131,6 +132,7 @@ export interface ManualInputs {
   bankLast12: boolean; // limit banking analysis to the latest 12 months
   pdfPasswords: string[];
   excludedSources: string[]; // data sources unticked in the Filters pane
+  pdfDisclaimer: boolean; // print the Disclaimer / Declaration in PDF downloads
 }
 
 export const DEFAULT_INPUTS: ManualInputs = {
@@ -161,6 +163,7 @@ export const DEFAULT_INPUTS: ManualInputs = {
   bankLast12: false,
   pdfPasswords: [],
   excludedSources: [],
+  pdfDisclaimer: false,
 };
 
 export interface Dataset {

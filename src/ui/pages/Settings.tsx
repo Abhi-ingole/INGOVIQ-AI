@@ -35,6 +35,11 @@ export function Settings({ a, ds, inp, setInp }: PageCtx) {
           {ds.gst?.taxRateEstimate && <span className="small muted">GST file implies {fmtPct(ds.gst.taxRateEstimate)} (tax ÷ taxable value)</span>}</label>
       </div>
 
+      <Section title="PDF downloads" />
+      <div className="form">
+        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={!!inp.pdfDisclaimer} onChange={(e) => setInp({ pdfDisclaimer: e.target.checked })} style={{ width: 'auto' }} />Print the Disclaimer / Declaration in PDF reports (off = no disclaimer in any PDF)</label>
+      </div>
+
       <Section title="Credit bureau" />
       <div className="form">
         <label>CIBIL score<input type="number" value={inp.cibilScore ?? ''} onChange={(e) => setInp({ cibilScore: n(e.target.value) })} /></label>

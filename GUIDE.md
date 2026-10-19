@@ -37,7 +37,9 @@
 14. **Fakt data asalele tabs:** jya prakarchya files upload kelya, tyache ch report tabs distat (e.g. financials nastil tar Financials / Ratios / Working Capital tabs disat nahit).
 15. **Pratyek report vegla download:** pratyek page chya varti **⤓ <page> PDF**, **⤓ <page> Excel** ani **⤓ PNG** buttons aahet. Ribbon madhla **PDF report** / **Excel** purna report deto. Excel madhe Indian number format (₹ lakh / crore grouping), column widths ani filter set astat.
 16. **Data sources tick box (Filters pane):** ekhada source untick kela (e.g. Banking) tar to sagla report madhun vagalla jato; parat tick kela ki parat yeto. Financial year tick kela ki Overview, GST ani Banking charts tya varshapurte filter hotat.
-17. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
+17. **📑 Credit report (PDF):** ribbon madhla **Credit report** button "Integrated Financial, GST, Banking & Credit Analysis Report" format (sections 1–40) madhe 50–70 pages cha searchable PDF banavto — contents page, pratyek table sobat **Evidence** (konti file / page / sheet row madhun figure ala), Annexure madhe Evidence Register, GSTR-3B return-wise data, bank statement coverage, Tally ledgers, formulas ani material bank transactions (pratyek entry chi file ani page). **📄 Dashboard PDF** screen jasa disto tasa PDF deto.
+18. **Disclaimer:** PDF madhe Disclaimer / Declaration by default nasto. Pahije asel tar **Settings → PDF downloads** madhe tick kar.
+19. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
 
 ## Part 3 · Accuracy kashi check karaychi
 

@@ -6,6 +6,8 @@ import { browserPdfLoader } from './ui/pdfLoader';
 import { type Incoming, ACCEPT, fromFileList, pickDirectory } from './ui/fileIntake';
 import { LoanFile } from './ui/pages/LoanFile';
 import { PageGuard } from './ui/PageGuard';
+import { buildCreditReport } from './ui/report/creditReport';
+import { chartImage, toDataUrl } from './ui/report/chartImage';
 import { readWorkbook, detectKind, type FileKind } from './engine/workbook';
 import { sortFYs, fyOfMonth, monthLabel } from './engine/utils';
 import type { PageCtx } from './ui/ctx';
@@ -21,7 +23,7 @@ import { Settings } from './ui/pages/Settings';
 import { Home, Guide, type LoadedFile } from './ui/pages/Home';
 import { idbGet, idbSet, lsGet, lsGetArr, lsSet } from './ui/store';
 import { exportExcel, exportPdf, exportPng } from './ui/exporters';
-import { ExportMode, HideCtx, HideBox, useSectionHiding, type HideState } from './ui/common';
+import { ExportMode, HideCtx, HideBox, useSectionHiding, DisclaimerInExport, type HideState } from './ui/common';
 import logoFull from './assets/logo-full.png';
 import logoIcon from './assets/logo-icon.png';
 import { exportHtml, readEmbedded, b64ToBuffer, type EmbeddedSnapshot } from './ui/htmlExport';
@@ -289,10 +291,21 @@ export default function App() {
       exportRef.current?.querySelectorAll('details').forEach((d) => { (d as HTMLDetailsElement).open = true; });
       await new Promise((r) => setTimeout(r, 300));
       const secs = [...(exportRef.current?.querySelectorAll<HTMLElement>('.export-sec') || [])];
-      await exportPdf(secs, a.company, setBusy, only);
+      await exportPdf(secs, a.company, setBusy, only, !!effInp.pdfDisclaimer);
       say(only ? `${only} PDF downloaded` : 'PDF report downloaded');
     } catch (e) { say(`PDF export failed: ${(e as Error).message}`); }
     setExportPages(null);
+    setBusy('');
+  };
+
+  const doReport = async () => {
+    if (!hasData) return;
+    setBusy('Building the credit analysis report…');
+    try {
+      const pdf = await buildCreditReport(a, ds, effInp, { includeDisclaimer: !!effInp.pdfDisclaimer, minPages: 50, maxPages: 70, chartImage, logo: await toDataUrl(logoFull), onProgress: setBusy });
+      pdf.save(`INGOVIQ_Credit_Analysis_Report_${a.company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.pdf`);
+      say(`Credit analysis report downloaded (${pdf.getNumberOfPages()} pages)`);
+    } catch (e) { say(`Report failed: ${(e as Error).message}`); console.error(e); }
     setBusy('');
   };
 
@@ -356,7 +369,8 @@ export default function App() {
           <button className={`rb ${customize ? 'on' : ''}`} disabled={!hasData} onClick={() => { setCustomize(!customize); if (!customize) setView('report'); }} title="Tick / untick pages, sections and visuals to show or hide them — also in PDF and HTML"><span className="ic">☑</span>Show / hide</button>
         </div>
         <div className="group">
-          <button className="rb" disabled={!hasData} onClick={() => doPdf()} title="Full report — every visible page"><span className="ic">📄</span>PDF report</button>
+          <button className="rb" disabled={!hasData} onClick={doReport} title="Credit Analysis Report (sections 1–40) — searchable PDF, 50–70 pages, every figure with its evidence"><span className="ic">📑</span>Credit report</button>
+          <button className="rb" disabled={!hasData} onClick={() => doPdf()} title="Dashboard as it looks on screen — every visible page"><span className="ic">📄</span>Dashboard PDF</button>
           <button className="rb" disabled={!hasData} onClick={() => exportExcel(a, ds, measures, hidden)}><span className="ic">📗</span>Excel</button>
           <button className="rb" disabled={!hasData} title="One offline HTML file with the full interactive dashboard and data" onClick={doHtml}><span className="ic">🌐</span>HTML</button>
           <button className="rb" disabled={!hasData || view === 'home'} onClick={() => pageRef.current && exportPng(pageRef.current, `${a.company}_${view === 'report' ? page : view}`)}><span className="ic">🖼</span>PNG page</button>
@@ -470,7 +484,7 @@ export default function App() {
       {(toast || busy || progress) && <div className="toast">{busy || progress || toast}</div>}
 
       {exportPages && (
-        <ExportMode.Provider value={true}><div className="export-root" ref={exportRef}>
+        <ExportMode.Provider value={true}><DisclaimerInExport.Provider value={!!effInp.pdfDisclaimer}><div className="export-root" ref={exportRef}>
           {exportPages.length > 1 && <div className="page export-sec" data-title="Cover">
             <div style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '30px 10px' }}>
               <img src={logoFull} alt="" style={{ width: 420 }} />
@@ -485,7 +499,7 @@ export default function App() {
               <HideCtx.Provider value={hideFor(p, true)}><PageGuard name={p}>{renderPage(p, { ...ctx, themeKey, exporting: true })}</PageGuard></HideCtx.Provider>
             </div>
           ))}
-        </div></ExportMode.Provider>
+        </div></DisclaimerInExport.Provider></ExportMode.Provider>
       )}
     </div>
   );

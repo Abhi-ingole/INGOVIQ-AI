@@ -17,6 +17,7 @@ export interface Gstr3b {
   nonGst: number; // 3.1(e)
   outputTax: number; // IGST+CGST+SGST+cess on 3.1(a)+(b)
   itc: number; // 4(A) total available
+  file?: string; // evidence
 }
 
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];

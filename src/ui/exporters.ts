@@ -113,18 +113,17 @@ export function exportExcel(a: Analysis, ds: Dataset, measures: CustomMeasure[],
 }
 
 /** Capture each element as an A4-landscape PDF page (long sections continue onto further pages). Disclaimer footer on every page. */
-export async function exportPdf(sections: HTMLElement[], company: string, onProgress?: (msg: string) => void, only?: string) {
+export async function exportPdf(sections: HTMLElement[], company: string, onProgress?: (msg: string) => void, only?: string, withDisclaimer = false) {
   const [{ jsPDF }, html2canvas] = await Promise.all([import('jspdf'), import('html2canvas').then((m) => m.default)]);
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
   const W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight();
-  const margin = 8, footerH = 16, headerH = 8;
+  const margin = 8, footerH = withDisclaimer ? 16 : 8, headerH = 8;
   const usableW = W - margin * 2, usableH = H - margin - footerH - headerH;
   let first = true;
   const footer = () => {
     pdf.setFontSize(5.6);
     pdf.setTextColor(110);
-    const lines = pdf.splitTextToSize(DISCLAIMER, W - margin * 2);
-    pdf.text(lines, margin, H - footerH + 3);
+    if (withDisclaimer) pdf.text(pdf.splitTextToSize(DISCLAIMER, W - margin * 2), margin, H - footerH + 3);
     pdf.setFontSize(7);
     pdf.text(`INGOVIQ AI · ${company} · page ${pdf.getNumberOfPages()}`, W - margin, H - 3, { align: 'right' });
   };
