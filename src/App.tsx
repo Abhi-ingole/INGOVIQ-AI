@@ -47,7 +47,7 @@ export default function App() {
   const [view, setView] = useState<View>('home');
   const [page, setPage] = useState<Page>('Overview');
   const [fySel, setFySel] = useState<string[]>([]);
-  const [theme, setTheme] = useState<'auto' | 'light' | 'dark'>(() => (localStorage.getItem('ingoviq.theme') as 'auto' | 'light' | 'dark') || 'light');
+  const [theme, setTheme] = useState<'auto' | 'light' | 'dark'>(() => { try { return (localStorage.getItem('ingoviq.theme') as 'auto' | 'light' | 'dark') || 'light'; } catch { return 'light'; } });
   const [systemDark, setSystemDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
   const [live, setLive] = useState(true);
   const [pane, setPane] = useState(true);
@@ -75,7 +75,7 @@ export default function App() {
   const effTheme = exporting ? 'light' : theme === 'auto' ? (systemDark ? 'dark' : 'light') : theme;
   // set synchronously so charts computed in this render read the right CSS colours
   if (document.documentElement.dataset.theme !== effTheme) document.documentElement.dataset.theme = effTheme;
-  useEffect(() => { localStorage.setItem('ingoviq.theme', theme); }, [theme]);
+  useEffect(() => { try { localStorage.setItem('ingoviq.theme', theme); } catch { /* storage blocked */ } }, [theme]);
   const themeKey = `${effTheme}-${exporting ? 'x' : ''}`;
 
   // restore last session's files
