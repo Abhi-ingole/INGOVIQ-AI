@@ -183,7 +183,8 @@ export function assessRisk(fd: FinancialData | null, fin: FinAnalysis | null, _g
   // ---------- decision
   const highFlags = flags.filter((f) => f.severity === 'High').length;
   let decision = 'N/A';
-  if (overallScore !== null) decision = overallScore >= 70 && highFlags <= 1 ? 'GO' : overallScore >= 50 && !(nw !== null && nw <= 0) ? 'CONDITIONAL GO' : 'NO-GO';
+  if (overallScore !== null && avail.length < 5) decision = 'INSUFFICIENT DATA';
+  else if (overallScore !== null) decision = overallScore >= 70 && highFlags <= 1 ? 'GO' : overallScore >= 50 && !(nw !== null && nw <= 0) ? 'CONDITIONAL GO' : 'NO-GO';
   const strengths: string[] = [], weaknesses: string[] = [], opportunities: string[] = [], threats: string[] = [];
   if ((rev?.cagr ?? 0) > 0.2) strengths.push(`Rapid turnover growth — ${fmtCr(rev!.values[fys[0]])} → ${fmtCr(last(rev, fys))}; latest YoY ${fmtPct(revYoY)}`);
   if ((last(pat, fys) ?? 0) > 0 && fys.every((f) => (pat?.values[f] ?? 0) > 0)) strengths.push('Profitable in every year analysed');

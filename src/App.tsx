@@ -7,7 +7,7 @@ import { type Incoming, ACCEPT, fromFileList, pickDirectory } from './ui/fileInt
 import { LoanFile } from './ui/pages/LoanFile';
 import { PageGuard } from './ui/PageGuard';
 import { readWorkbook, detectKind, type FileKind } from './engine/workbook';
-import { sortFYs } from './engine/utils';
+import { sortFYs, fyOfMonth, monthLabel } from './engine/utils';
 import type { PageCtx } from './ui/ctx';
 import { Overview } from './ui/pages/Overview';
 import { Financials, Ratios, WorkingCapital } from './ui/pages/Financials';
@@ -240,7 +240,7 @@ export default function App() {
   useSectionHiding(pageRef, [page, view, hidden, customize, ds]);
   useSectionHiding(exportRef, [exporting, hidden]);
   const hasData = !!(ds.financial || ds.gst || ds.banking || ds.docs?.length);
-  const allFYs = useMemo(() => sortFYs([...(a.fin?.fys || []), ...(a.gst?.fys || [])]), [a]);
+  const allFYs = useMemo(() => sortFYs(new Set([...(a.fin?.fys || []), ...(a.gst?.fys || []), ...(a.bank?.months || []).map(fyOfMonth)])), [a]);
   const toggleFY = useCallback((fy: string) => { if (!/^FY /.test(fy)) return; setFySel((s) => (s.includes(fy) ? s.filter((x) => x !== fy) : [...s, fy])); }, []);
   const ctx: PageCtx = { a, ds, inp: effInp, setInp, fySel, toggleFY, themeKey };
 
@@ -290,6 +290,24 @@ export default function App() {
     if (!confirm('Remove all loaded files from this browser?')) return;
     setFiles([]); persist([]); setView('home'); setFySel([]); setFrozenDs(null); setSnapshot(null);
   };
+
+  // data sources, from what was actually read out of the uploaded files
+  const span = (ms: string[]) => (ms.length ? `${monthLabel(ms[0])} → ${monthLabel(ms[ms.length - 1])}` : '');
+  const docsOf = (re: RegExp) => (ds.docs || []).filter((d) => d.status === 'used' && re.test(d.type));
+  const fileNames = (re: RegExp, kind: string) => [...docsOf(re).map((d) => d.path.split('/').pop() || d.path), ...files.filter((f) => f.kind === kind).map((f) => f.name)];
+  const sources = [
+    { label: 'Financials', ok: !!ds.financial, live: files.some((f) => f.kind === 'financial' && f.handle), files: fileNames(/financial/i, 'financial'),
+      detail: ds.financial ? `${ds.financial.fys.join(', ') || 'no years'}${!ds0.financial && ds.financial ? ' · typed in Data view' : ''}` : (ds.docs || []).some((d) => d.status === 'scanned' && /financial|itr/i.test(d.type)) ? 'Scanned PDFs only — add years in Data view' : '' },
+    { label: 'GST', ok: !!ds.gst, live: files.some((f) => f.kind === 'gst' && f.handle), files: fileNames(/gst/i, 'gst'),
+      detail: ds.gst ? `${ds.gst.gstins.length} GSTIN · ${span(ds.gst.months)}${ds.extra?.gstr3b.length ? ` · ${ds.extra.gstr3b.length} GSTR-3B` : ''}` : '' },
+    { label: 'Banking', ok: !!ds.banking, live: files.some((f) => f.kind === 'banking' && f.handle), files: fileNames(/bank/i, 'banking'),
+      detail: ds.banking ? `${ds.banking.accounts.length || new Set(ds.banking.txns.map((t) => t.account)).size} account(s) · ${ds.banking.txns.length.toLocaleString('en-IN')} txns · ${span(ds.banking.months)}` : '' },
+    ...(ds.extra && ds.docs?.length ? [
+      { label: 'CIBIL / CMR', ok: ds.extra.cibil.length > 0, live: false, files: fileNames(/cibil/i, '-'), detail: ds.extra.cibil.map((c) => (c.kind === 'commercial' ? `CMR-${c.cmr ?? '?'}` : `${c.score ?? '?'}`)).join(' · ') },
+      { label: 'Ledgers / ageing', ok: ds.extra.ledgerParties.length + ds.extra.ageing.length + ds.extra.momSales.length > 0, live: false, files: fileNames(/ledger|ageing|mom/i, '-'), detail: [ds.extra.ledgerParties.length ? `${ds.extra.ledgerParties.length} Tally parties` : '', ds.extra.ageing.length ? `${ds.extra.ageing.length} ageing file(s)` : ''].filter(Boolean).join(' · ') },
+      { label: 'Loans & net worth', ok: ds.extra.loans.length + ds.extra.networth.length > 0, live: false, files: fileNames(/loan|net-worth/i, '-'), detail: [ds.extra.loans.length ? `${ds.extra.loans.length} loans` : '', ds.extra.networth.length ? `${ds.extra.networth.length} net-worth cert.` : ''].filter(Boolean).join(' · ') },
+    ] : []),
+  ];
 
   const homeFiles: LoadedFile[] = files.map(({ buffer: _b, ...f }) => f); // eslint-disable-line @typescript-eslint/no-unused-vars
   const liveCapable = files.some((f) => f.handle);
@@ -390,17 +408,22 @@ export default function App() {
                 </div>
                 <div className="filter-card">
                   <h4>Data sources</h4>
-                  {(['financial', 'gst', 'banking'] as const).map((k) => {
-                    const f = files.find((x) => x.kind === k);
-                    const has = k === 'financial' ? !!ds.financial : k === 'gst' ? !!ds.gst : !!ds.banking;
-                    return <div key={k} className="small" style={{ padding: '3px 0' }}>{has ? '✅' : '⬜'} {k === 'financial' ? 'Financials' : k === 'gst' ? 'GST' : 'Banking'} {f && <span className="muted">· {f.handle ? 'live' : 'static'}</span>}</div>;
-                  })}
+                  {sources.map((x) => (
+                    <div key={x.label} className="small" style={{ padding: '3px 0' }} title={x.files.join('\n')}>
+                      {x.ok ? '✅' : '⬜'} <b style={{ fontWeight: 600 }}>{x.label}</b>{x.live && <span className="muted"> · live</span>}
+                      {x.detail && <div className="muted" style={{ paddingLeft: 20, fontSize: 11 }}>{x.detail}</div>}
+                    </div>
+                  ))}
+                  {!files.length && <div className="small muted">No files loaded</div>}
+                  {files.length > 0 && <div className="small muted" style={{ marginTop: 4 }}>{ds.docs?.length || files.length} file(s){progress ? ' · reading…' : ''}</div>}
                 </div>
                 {hasData && (
                   <div className="filter-card">
                     <h4>Credit score</h4>
                     <div style={{ fontSize: 22, fontWeight: 700 }}>{a.risk.overall.score ?? '—'}<span className="small muted">/100</span></div>
                     <div className="small">{a.risk.overall.risk} risk · {a.risk.decision.decision}</div>
+                    <div className="small muted" style={{ marginTop: 4 }}>Based on {a.risk.overall.covered} of {a.risk.scores.length} dimensions</div>
+                    {a.risk.overall.covered < 5 && <div className="small" style={{ marginTop: 4, color: 'var(--warn-text, #8a5a00)' }}>▲ Provisional — upload financials, GST and banking for a reliable score</div>}
                   </div>
                 )}
               </div>

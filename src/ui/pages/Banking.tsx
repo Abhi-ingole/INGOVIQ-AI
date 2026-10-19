@@ -3,7 +3,7 @@ import type { PageCtx } from '../ctx';
 import { ChartCard } from '../Chart';
 import { Section, Chip, Disclaimer, NoData, Kpi, Table } from '../common';
 import { fmtCr, fmtINR, fmtPct, fmtDate } from '../../engine/format';
-import { monthLabel } from '../../engine/utils';
+import { monthLabel, fyOfMonth } from '../../engine/utils';
 import type { TxnClass } from '../../engine/types';
 import type { ClassifiedTxn } from '../../engine/calcBanking';
 
@@ -18,12 +18,13 @@ const txnCols = [
   { key: 'cls', label: 'Classification', render: (r: ClassifiedTxn) => <Chip s={r.cls} tone={r.cls === 'Business' ? 'good' : r.cls === 'Return / Reversal' ? 'serious' : 'info'} /> },
 ];
 
-export function Banking({ a, inp, setInp, themeKey, exporting }: PageCtx) {
+export function Banking({ a, inp, setInp, themeKey, exporting, fySel }: PageCtx) {
   const b = a.bank;
   const [monthSel, setMonthSel] = useState<string[]>([]);
   const [partyFilter, setPartyFilter] = useState('');
   if (!b) return <><NoData what="Banking analysis report / bank statement" /><Disclaimer /></>;
-  const months = monthSel.length ? b.months.filter((m) => monthSel.includes(m)) : b.months;
+  const inFy = (m: string) => !fySel.length || fySel.includes(fyOfMonth(m));
+  const months = (monthSel.length ? b.months.filter((m) => monthSel.includes(m)) : b.months).filter(inFy);
   const mm = b.monthly.filter((m) => months.includes(m.month));
   const sum = (f: (x: (typeof mm)[number]) => number) => mm.reduce((s, x) => s + f(x), 0);
   const setClass = (party: string, cls: TxnClass) => setInp({ partyClassOverrides: { ...inp.partyClassOverrides, [party]: cls } });
@@ -33,7 +34,7 @@ export function Banking({ a, inp, setInp, themeKey, exporting }: PageCtx) {
     <>
       <div className="filter-card" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
         <b className="small">Months:</b>
-        {b.months.map((m) => <button key={m} className={`btn small ${monthSel.includes(m) ? 'primary' : ''}`} onClick={() => setMonthSel((s) => (s.includes(m) ? s.filter((x) => x !== m) : [...s, m]))}>{monthLabel(m)}</button>)}
+        {b.months.filter(inFy).map((m) => <button key={m} className={`btn small ${monthSel.includes(m) ? 'primary' : ''}`} onClick={() => setMonthSel((s) => (s.includes(m) ? s.filter((x) => x !== m) : [...s, m]))}>{monthLabel(m)}</button>)}
         {monthSel.length > 0 && <button className="btn small" onClick={() => setMonthSel([])}>Clear</button>}
         <span className="small muted" style={{ marginLeft: 'auto' }}>{b.txns.length} transactions · {new Set(b.txns.map((t) => t.account)).size} account(s)</span>
       </div>
