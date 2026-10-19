@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { PageCtx } from '../ctx';
+import { BankVisuals } from './ExtraVisuals';
 import { ChartCard } from '../Chart';
 import { Section, Chip, Disclaimer, NoData, Kpi, Table } from '../common';
 import { fmtCr, fmtINR, fmtPct, fmtDate } from '../../engine/format';
@@ -18,7 +19,8 @@ const txnCols = [
   { key: 'cls', label: 'Classification', render: (r: ClassifiedTxn) => <Chip s={r.cls} tone={r.cls === 'Business' ? 'good' : r.cls === 'Return / Reversal' ? 'serious' : 'info'} /> },
 ];
 
-export function Banking({ a, inp, setInp, themeKey, exporting, fySel }: PageCtx) {
+export function Banking(ctx: PageCtx) {
+  const { a, inp, setInp, themeKey, exporting, fySel } = ctx;
   const b = a.bank;
   const [monthSel, setMonthSel] = useState<string[]>([]);
   const [partyFilter, setPartyFilter] = useState('');
@@ -193,6 +195,7 @@ export function Banking({ a, inp, setInp, themeKey, exporting, fySel }: PageCtx)
           <div className="small muted">Interest servicing: {b.interest.filter((i) => i.amount).map((i) => `${monthLabel(i.month)} ${fmtINR(i.amount)}`).join(' · ') || 'no interest debits identified'}</div>
         </div>
       ))}
+      <BankVisuals {...ctx} />
       <Disclaimer />
     </>
   );

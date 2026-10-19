@@ -1,5 +1,6 @@
 import { useContext, useState } from 'react';
 import type { PageCtx } from '../ctx';
+import { RatioVisuals, WcVisuals } from './ExtraVisuals';
 import { pickFYs } from '../ctx';
 import { ChartCard } from '../Chart';
 import { Section, Chip, Disclaimer, Arrow, NoData, Kpi, ExportMode } from '../common';
@@ -130,7 +131,8 @@ export function Financials({ a, ds, fySel, toggleFY, themeKey }: PageCtx) {
   );
 }
 
-export function Ratios({ a, ds, fySel, toggleFY, themeKey }: PageCtx) {
+export function Ratios(ctx: PageCtx) {
+  const { a, ds, fySel, toggleFY, themeKey } = ctx;
   const fin = a.fin;
   if (!fin) return <><NoData what="Audited financial statements" /><Disclaimer /></>;
   const fys = pickFYs(fin.fys, fySel);
@@ -194,12 +196,14 @@ export function Ratios({ a, ds, fySel, toggleFY, themeKey }: PageCtx) {
           </div>
         </>
       )}
+      <RatioVisuals {...ctx} />
       <Disclaimer />
     </>
   );
 }
 
-export function WorkingCapital({ a, ds, fySel, themeKey, inp }: PageCtx) {
+export function WorkingCapital(ctx: PageCtx) {
+  const { a, ds, fySel, themeKey, inp } = ctx;
   const fin = a.fin;
   if (!fin) return <><NoData what="Audited financial statements" /><Disclaimer /></>;
   const fys = pickFYs(fin.fys, fySel);
@@ -247,6 +251,7 @@ export function WorkingCapital({ a, ds, fySel, themeKey, inp }: PageCtx) {
           </tbody>
         </table>
       </div>
+      <WcVisuals {...ctx} />
       <Disclaimer />
     </>
   );

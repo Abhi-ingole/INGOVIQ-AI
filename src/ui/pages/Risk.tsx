@@ -1,4 +1,5 @@
 import type { PageCtx } from '../ctx';
+import { AgeingVisuals, RiskVisuals, DecisionVisuals } from './ExtraVisuals';
 import { SwotView } from './Swot';
 import { ChartCard, Gauge, Radar } from '../Chart';
 import { Section, Chip, Disclaimer, Table, Kpi } from '../common';
@@ -6,7 +7,8 @@ import { fmtINR, fmtPct, fmtCr } from '../../engine/format';
 
 const numIn = (v: string) => (v.trim() === '' ? null : Number(v.replace(/,/g, '')));
 
-export function AgeingBureau({ a, inp, setInp, themeKey }: PageCtx) {
+export function AgeingBureau(ctx: PageCtx) {
+  const { a, inp, setInp, themeKey } = ctx;
   const tot = (k: 'receivable' | 'payable') => inp.ageing.reduce((s, b) => s + (b[k] || 0), 0);
   const setAge = (i: number, k: 'receivable' | 'payable', v: string) => setInp({ ageing: inp.ageing.map((b, j) => (j === i ? { ...b, [k]: Number(v.replace(/,/g, '')) || 0 } : b)) });
   const bureauScore = a.risk.scores.find((s) => s.key === 'bureau');
@@ -53,6 +55,7 @@ export function AgeingBureau({ a, inp, setInp, themeKey }: PageCtx) {
         <label style={{ gridColumn: 'span 2' }}>Bureau notes (existing loans, sanctioned limits, outstanding, EMI, enquiries, settled / written-off accounts)<textarea rows={3} value={inp.bureauNotes} onChange={(e) => setInp({ bureauNotes: e.target.value })} /></label>
       </div>
       <div className="note small" style={{ marginTop: 10 }}>Bureau score for the scorecard: <b>{bureauScore?.score ?? 'not scored'}</b> — {bureauScore?.basis}. {a.risk.flags.find((f) => f.area === 'Bureau')?.text}</div>
+      <AgeingVisuals {...ctx} />
       <Disclaimer />
     </>
   );
@@ -101,12 +104,14 @@ export function RiskSwot(ctx: PageCtx) {
         </div>
       </div>
       <div className="note small">Overall score is the average of the dimensions with data ({risk.overall.covered}/13). Score bands: ≥ 75 Low · 60–74 Moderate · 45–59 High · &lt; 45 Very High. Scoring weights, benchmarks and cut-offs should be separately defined and approved before the model is used for production credit decisions.</div>
+      <RiskVisuals {...ctx} />
       <Disclaimer />
     </>
   );
 }
 
-export function Decision({ a, inp }: PageCtx) {
+export function Decision(ctx: PageCtx) {
+  const { a, inp } = ctx;
   const risk = a.risk;
   const d = risk.decision;
   const tone = d.decision === 'GO' ? 'go' : d.decision === 'NO-GO' ? 'no' : 'cond';
@@ -151,6 +156,7 @@ export function Decision({ a, inp }: PageCtx) {
         <Table rows={risk.qa} cols={[{ key: 'n', label: '#', render: (x) => risk.qa.indexOf(x) + 1, width: 30 }, { key: 'q', label: 'Question', render: (x) => <b>{x.q}</b>, wrap: true }, { key: 'a', label: 'INGOVIQ answer', wrap: true }]} />
       </div>
       <Section num="40" title="Report disclaimer / declaration" />
+      <DecisionVisuals {...ctx} />
       <Disclaimer />
     </>
   );

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { PageCtx } from '../ctx';
+import { StarterVisuals } from './ExtraVisuals';
 import { ChartCard, type ChartType, type ValUnit, type ChartSpec } from '../Chart';
 import { Section, Disclaimer, Table, Chip } from '../common';
 import { fieldCatalog, evaluateMeasure } from '../../engine/measures';
@@ -60,7 +61,8 @@ export function specFor(d: DS | undefined, v: CustomVisual): ChartSpec | null {
   return { categories: d.categories, unit: v.unit, type: v.type, series: fs.map((f, i) => ({ name: f.replace(/^ƒ /, ''), data: d.fields[f], slot: i })) };
 }
 
-export function MyVisuals({ a, themeKey, visuals, setVisuals, measures }: PageCtx & { visuals: CustomVisual[]; setVisuals: (v: CustomVisual[]) => void; measures: CustomMeasure[] }) {
+export function MyVisuals(ctx: PageCtx & { visuals: CustomVisual[]; setVisuals: (v: CustomVisual[]) => void; measures: CustomMeasure[] }) {
+  const { a, themeKey, visuals, setVisuals, measures } = ctx;
   const ds = useMemo(() => datasets(a, measures), [a, measures]);
   const names = Object.keys(ds);
   const [draft, setDraft] = useState<CustomVisual>({ id: '', title: '', dataset: names[0] || '', fields: [], type: 'bar', unit: 'inr' });
@@ -114,6 +116,7 @@ export function MyVisuals({ a, themeKey, visuals, setVisuals, measures }: PageCt
         })}
       </div>
       <Disclaimer />
+      {visuals.length < 4 && <StarterVisuals {...ctx} />}
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { PageCtx } from '../ctx';
+import { SwotVisuals } from './ExtraVisuals';
 import { Section, Chip, Kpi, DISCLAIMER } from '../common';
 import type { SwotType, Severity } from '../../engine/swot';
 import { buildEvidence } from '../../engine/evidence';
@@ -58,11 +59,13 @@ export function SwotView({ a, ds, inp, compact = false, exporting }: PageCtx & {
   );
 }
 
-export function Swot(c: PageCtx) {
+export function Swot(ctx: PageCtx) {
+  const c = ctx;
   return (
     <>
       <Section title="Automatic SWOT — every point with its ratio, data source, severity and recommendation" />
       <SwotView {...c} />
+      <SwotVisuals {...ctx} />
     </>
   );
 }

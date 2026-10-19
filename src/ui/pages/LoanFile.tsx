@@ -1,4 +1,5 @@
 import type { PageCtx } from '../ctx';
+import { LoanFileVisuals } from './ExtraVisuals';
 import { ChartCard } from '../Chart';
 import { Section, Chip, Disclaimer, Table, Kpi, NoData } from '../common';
 import { fmtINR, fmtPct, fmtCr, fmtDate } from '../../engine/format';
@@ -10,7 +11,8 @@ const STATUS_TONE: Record<DocEntry['status'], 'good' | 'warn' | 'serious' | 'neu
 };
 
 /** Everything that came from the loan-file folder / zip: inventory, coverage, returns, loans, bureau, KYC facts. */
-export function LoanFile({ ds, themeKey, exporting }: PageCtx) {
+export function LoanFile(ctx: PageCtx) {
+  const { ds, themeKey, exporting } = ctx;
   const x = ds.extra;
   const docs = ds.docs || [];
   if (!docs.length || !x) return <><NoData what="Loan-file folder / zip" hint="Use Get data → Upload folder or Upload zip to load a complete loan file (bank statements, GSTR-3B, CIBIL, ledgers, ageing, KYC)." /><Disclaimer /></>;
@@ -175,6 +177,7 @@ export function LoanFile({ ds, themeKey, exporting }: PageCtx) {
           </div>
         </>
       )}
+      <LoanFileVisuals {...ctx} />
       <Disclaimer />
     </>
   );

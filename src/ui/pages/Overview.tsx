@@ -1,4 +1,5 @@
 import type { PageCtx } from '../ctx';
+import { OverviewVisuals } from './ExtraVisuals';
 import { pickFYs } from '../ctx';
 import { ChartCard, Gauge, Radar } from '../Chart';
 import { Kpi, Section, Chip, Disclaimer, Table } from '../common';
@@ -6,7 +7,8 @@ import { companySnapshot } from '../snapshot';
 import { fmtCr, fmtPct, fmtINR } from '../../engine/format';
 import { monthLabel, shortFY, fyOfMonth } from '../../engine/utils';
 
-export function Overview({ a, ds, inp, fySel, toggleFY, themeKey }: PageCtx) {
+export function Overview(ctx: PageCtx) {
+  const { a, ds, inp, fySel, toggleFY, themeKey } = ctx;
   const fin = a.fin, gst = a.gst, bank = a.bank, risk = a.risk;
   const fys = fin ? pickFYs(fin.fys, fySel) : [];
   const lastFY = fin?.fys[fin.fys.length - 1];
@@ -67,6 +69,8 @@ export function Overview({ a, ds, inp, fySel, toggleFY, themeKey }: PageCtx) {
           </ul>
         </div>
       </div>
+
+      <OverviewVisuals {...ctx} />
 
       <Section num="1" title="Company & Credit Snapshot" />
       <Table rows={snapshotRows} cols={[{ key: 'k', label: 'Particular', render: (r) => <b>{r[0]}</b>, width: 260 }, { key: 'v', label: 'Details', render: (r) => r[1], wrap: true }]} />
