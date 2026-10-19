@@ -9,7 +9,22 @@
     <title>INGOVIQ AI — Intelligence in Every Insight</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot" style="font:15px system-ui,sans-serif;color:#334;padding:60px 24px;text-align:center">
+      <b>INGOVIQ AI is loading…</b>
+      <div id="boot-help" style="display:none;margin-top:12px;color:#555">Taking too long? Press <b>Ctrl + Shift + R</b> to reload the latest version.</div>
+    </div></div>
+    <script>
+      // show a hint if the app has not started after 8 s
+      setTimeout(function () { var h = document.getElementById('boot-help'); if (h) h.style.display = 'block'; }, 8000);
+      // after a new deploy an old cached page can point to files that no longer exist: reload once, bypassing the cache
+      window.addEventListener('error', function (e) {
+        var t = e.target;
+        if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK') && location.protocol !== 'file:') {
+          try { if (sessionStorage.getItem('ingoviq.reloaded')) return; sessionStorage.setItem('ingoviq.reloaded', '1'); } catch (x) { return; }
+          location.replace(location.pathname + '?v=' + Date.now());
+        }
+      }, true);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
