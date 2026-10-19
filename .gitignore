@@ -10,3 +10,4 @@ samples/
 *.csv
 *.pdf
 dist-standalone/
+*.tsbuildinfo
