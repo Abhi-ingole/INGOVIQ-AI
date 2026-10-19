@@ -1,8 +1,22 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 
 /** true while the PDF report is being rendered */
 export const ExportMode = createContext(false);
-const EXPORT_ROW_LIMIT = 40;
+
+/** Show / hide: every page, section and visual has a key; unticked keys are hidden in the
+    dashboard, the PDF and the HTML export. In customise mode hidden items stay visible (dimmed) with a tick box. */
+export interface HideState { page: string; hidden: string[]; customize: boolean; toggle: (key: string) => void }
+export const HideCtx = createContext<HideState>({ page: '', hidden: [], customize: false, toggle: () => undefined });
+export const secKey = (page: string, num: string | undefined, title: string) => `sec:${page}:${num ? num + ' ' : ''}${title}`;
+export const vizKey = (page: string, title: string) => `viz:${page}:${title.replace(/\s+[—–-]\s+FY \d{4}-\d{2}$/, '')}`;
+export function HideBox({ k, label }: { k: string; label?: string }) {
+  const h = useContext(HideCtx);
+  if (!h.customize) return null;
+  const on = !h.hidden.includes(k);
+  return <label className="hidebox" title={on ? 'Untick to hide everywhere (dashboard, PDF, HTML)' : 'Hidden — tick to show again'} onClick={(e) => e.stopPropagation()}>
+    <input type="checkbox" checked={on} onChange={() => h.toggle(k)} />{label}
+  </label>;
+}
 
 export const DISCLAIMER =
   'Disclaimer / Declaration: This report is generated based on the Financial Statements, GST Data, Banking Data, CIBIL/CMR Information, Invoice/Ageing Data and other information made available for analysis. All calculations, ratios, trends, reconciliations, risk indicators, scoring outputs, projections and AI-generated observations are dependent upon the accuracy, authenticity, completeness and availability of the underlying data. The report is intended solely for financial analysis, credit assessment and decision-support purposes and should not be construed as a sanction, commitment, assurance or guarantee of funding from any Bank, NBFC, Financial Institution, Investor or other funding institution. Any indicative eligibility, funding capacity, product recommendation, risk classification or AI Credit Score remains subject to independent due diligence, applicable regulations and the respective lender/investor\'s internal credit policy and final approval.';
@@ -12,11 +26,15 @@ export function Disclaimer() {
 }
 
 export function Section({ num, title, children, right }: { num?: string; title: string; children?: ReactNode; right?: ReactNode }) {
+  const h = useContext(HideCtx);
+  const exporting = useContext(ExportMode);
+  const k = secKey(h.page, num, title);
+  const hidden = h.hidden.includes(k);
   return (
     <>
-      <div className="section-title" style={{ justifyContent: 'space-between' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{num && <span className="num">{num}</span>}{title}</span>
-        {right}
+      <div className="section-title" style={{ justifyContent: 'space-between' }} data-hide-key={k} data-sec-hidden={hidden ? (h.customize ? 'dim' : '1') : '0'}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><HideBox k={k} />{num && <span className="num">{num}</span>}{title}</span>
+        {!exporting && right}
       </div>
       {children}
     </>
@@ -55,7 +73,6 @@ export function Chip({ s, tone }: { s: string; tone?: ReturnType<typeof statusTo
 export interface Col<T> { key: string; label: string; num?: boolean; render?: (r: T) => ReactNode; sort?: (r: T) => number | string; wrap?: boolean; width?: number }
 export function Table<T>({ rows, cols, maxHeight, empty = 'No rows', rowClass, initialSort }: { rows: T[]; cols: Col<T>[]; maxHeight?: number; empty?: string; rowClass?: (r: T) => string; initialSort?: { key: string; dir: 1 | -1 } }) {
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(initialSort || null);
-  const exporting = useContext(ExportMode);
   const sorted = useMemo(() => {
     if (!sort) return rows;
     const c = cols.find((x) => x.key === sort.key);
@@ -80,12 +97,11 @@ export function Table<T>({ rows, cols, maxHeight, empty = 'No rows', rowClass, i
         </thead>
         <tbody>
           {sorted.length === 0 && <tr><td colSpan={cols.length} className="muted">{empty}</td></tr>}
-          {(exporting ? sorted.slice(0, EXPORT_ROW_LIMIT) : sorted).map((r, i) => (
+          {sorted.map((r, i) => (
             <tr key={i} className={rowClass?.(r)}>
               {cols.map((c) => <td key={c.key} className={`${c.num ? 'num' : ''} ${c.wrap ? 'wrap' : ''}`}>{c.render ? c.render(r) : String((r as Record<string, unknown>)[c.key] ?? '')}</td>)}
             </tr>
           ))}
-          {exporting && sorted.length > EXPORT_ROW_LIMIT && <tr><td colSpan={cols.length} className="muted small">… {sorted.length - EXPORT_ROW_LIMIT} more rows — full list in the Excel export</td></tr>}
         </tbody>
       </table>
     </div>
@@ -100,4 +116,26 @@ export function Arrow({ v, better = 'high' }: { v: number | null | undefined; be
 
 export function NoData({ what, hint }: { what: string; hint?: string }) {
   return <div className="note warn"><b>{what} not loaded.</b> {hint || 'Upload the file from Get data to see this section.'}</div>;
+}
+
+/** Applies section hiding: a hidden section title hides every following sibling up to the next section title. */
+export function useSectionHiding(ref: { current: HTMLElement | null }, deps: unknown[]) {
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const apply = () => {
+      root.querySelectorAll<HTMLElement>('[data-ingv-hidden]').forEach((el) => el.removeAttribute('data-ingv-hidden'));
+      root.querySelectorAll<HTMLElement>('.section-title').forEach((t) => {
+        const mode = t.getAttribute('data-sec-hidden');
+        if (mode !== '1' && mode !== 'dim') return;
+        const val = mode === '1' ? '1' : 'dim';
+        if (val === '1') t.setAttribute('data-ingv-hidden', '1');
+        for (let n = t.nextElementSibling as HTMLElement | null; n && !n.classList.contains('section-title') && !n.classList.contains('disclaimer'); n = n.nextElementSibling as HTMLElement | null) n.setAttribute('data-ingv-hidden', val);
+      });
+    };
+    apply();
+    const mo = new MutationObserver((recs) => { if (recs.some((r) => r.type === 'childList' || (r.attributeName === 'data-sec-hidden'))) apply(); });
+    mo.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-sec-hidden'] });
+    return () => mo.disconnect();
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
 }

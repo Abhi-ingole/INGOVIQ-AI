@@ -10,6 +10,10 @@
 
 ## Part 2 · Dashboard vaparne
 
+0. **Purna loan file (folder / zip):** *Get data → 🗂 Upload folder* (kiva *🗜 Upload zip / files*) — company cha purna folder / zip nivad. Bank statement PDF, GSTR-3B, CIBIL / CMR, net-worth, MCA, Tally ledger, ageing, loan obligation, KYC — sagle files automatic vachle jatat ani purna report tayar hoto. Progress khali disto.
+   - Password asleli PDF: folder / file navat `pass-1234` asel tar automatic try hoto. Nahitar *PDF passwords* box madhe password takun **Add & retry**.
+   - **Loan File** page var pratyek file chi list — used / scanned / needs password / duplicate.
+   - Audited financials scanned (photo) PDF astil tar: **Data view → Financial line items → Add last 3 years** ani figures type kar, kiva **⤓ Financial input template** download karun Excel madhe bhar ani parat upload kar.
 1. **Get data** — Chrome / Edge madhe website open kar. *Choose Excel files* var click karun 3 files nivad: Financial report, GST analysis report, Banking analysis report. (Ek-don files pan chaltat.)
    - Prateyk file samor tichi type disel (📊 Financial / 🧾 GST / 🏦 Banking). Chukichi asel tar *Treat as…* madhun badal.
 2. **Open dashboard →** dabav. Data automatic clean hoto, sagle calculations hotat.
@@ -28,7 +32,9 @@
     - **🌐 HTML** — ekach `.html` file madhe purna dashboard + data. Internet nastana pan kontyahi browser madhe open hote. Sagle pages, filters, chart badalne, PDF/Excel export tyatun pan chalte. Email / WhatsApp var pathavta yete.
     - **PDF report** (purna credit report, pratyek page var disclaimer), **Excel** (sagle tables), **PNG page**.
     - Downloaded HTML madhe navin Excel data pahije tar **Get data / Refresh** dabav ani updated files nivad (Chrome/Edge madhe Live pan on hote). Mag tithunach parat **🌐 HTML** download kar — navin data sahit.
-12. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
+12. **Nako asleli mahiti lapvne (Show / hide):** ribbon madhe **☑ Show / hide** dabav. Page tabs, section titles ani pratyek graph var tick box yeto — untick kela ki te dashboard, PDF, Excel (page) ani HTML madhun nighte. **Done** dabav. Parat sagla dakhvaycha asel tar *Show everything*.
+13. **PDF madhe sagla data:** PDF madhe pratyek table chya sagle rows, pratyek financial year vegla (statements, buyers, suppliers, states) yetat; page break row chya madhe yeto, row tutat nahi.
+14. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
 
 ## Part 3 · Accuracy kashi check karaychi
 

@@ -62,6 +62,19 @@ SAMPLES=/path/to/excel/folder npm test
 - **GST analysis report** — summary, customer-wise, supplier-wise, state-wise, intra-group, GSTR-3B and filing sheets.
 - **Banking analysis report** — the consolidated raw-transaction sheet (plus executive summary), or a plain bank statement with Date / Narration / Debit / Credit / Balance columns.
 
+- **A complete loan file — folder or zip** (*Get data → Upload folder / Upload zip*). Every file inside is classified and read in the browser:
+  - **Bank-statement PDFs** (HDFC, YES, ICICI, SBI, Axis and similar layouts) — columns found from the header, running balance checked, overlapping statements of the same account merged and de-duplicated. Passwords written in folder / file names (e.g. `pass-1234`) are tried automatically; others can be added under *PDF passwords*.
+  - **GSTR-3B PDFs** (all GSTINs) — monthly outward supplies, zero-rated, nil / exempt, output tax, ITC, filing date vs due date.
+  - **CIBIL** consumer reports and **CMR** commercial report, **net-worth certificates**, **MCA master data**, **GST registration certificates**.
+  - **Tally "Ledger Vouchers" export** — party-wise sales and purchases (feeds buyer / supplier concentration), receipts, payments, closing balances.
+  - **Invoice ageing** (debtors / creditors), **MOM sales / purchase bills**, **loan obligation sheet**.
+  - KYC, images, scanned PDFs and other documents are listed in the **Loan File** page inventory with their status (used / scanned / needs password / duplicate).
+  - Scanned audited statements cannot be read as text: add the years in **Data view → Financial line items** and type the figures, or download the **financial input template**, fill it and upload it.
+
+**Show / hide:** ribbon → *Show / hide* puts tick boxes on page tabs, section titles and visuals. Unticked items disappear from the dashboard, the PDF report, the Excel export (pages) and the HTML export.
+
+**Full exports:** the PDF contains every row of every table and every financial year separately (page breaks fall between rows); the Excel workbook adds the loan-file sheets (documents, GSTR-3B, loans, bureau, ageing, Tally parties).
+
 If a file is laid out differently, use **Treat as…** on the Get-data screen and correct any missing value in **Data view → Financial line items**.
 
 ## Project structure

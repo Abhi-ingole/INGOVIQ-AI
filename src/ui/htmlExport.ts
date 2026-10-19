@@ -1,21 +1,24 @@
 /* "Export → Interactive HTML": one self-contained .html file = the full INGOVIQ app + the loaded
    Excel data + manual inputs, visuals and measures. Opens offline in any browser with every page,
    filter, chart switch and export working. "Get data / Refresh" inside it updates with newer Excel. */
-import type { ManualInputs } from '../engine/types';
+import type { ManualInputs, Dataset } from '../engine/types';
 import type { FileKind } from '../engine/workbook';
 import type { CustomMeasure, CustomVisual } from './pages/Custom';
 
 export interface EmbeddedFile { name: string; size: number; kind: FileKind; lastModified: number; b64: string }
 export interface EmbeddedSnapshot {
   app: 'INGOVIQ AI';
-  version: 1;
+  version: 1 | 2;
   company: string;
   createdAt: string;
   files: EmbeddedFile[];
   inputs: ManualInputs;
   visuals: CustomVisual[];
   measures: CustomMeasure[];
+  /** v2: the parsed dataset itself (loan files with many PDFs are not re-embedded as raw files) */
+  dataset?: Dataset;
 }
+const RAW_LIMIT = 25 * 1048576;
 
 const DATA_ID = 'ingoviq-data';
 
@@ -62,7 +65,7 @@ async function template(): Promise<string> {
 
 export async function exportHtml(
   files: { name: string; size: number; kind: FileKind; lastModified: number; buffer: ArrayBuffer }[],
-  company: string, inputs: ManualInputs, visuals: CustomVisual[], measures: CustomMeasure[],
+  company: string, inputs: ManualInputs, visuals: CustomVisual[], measures: CustomMeasure[], dataset?: Dataset,
 ) {
   let html = await template();
   // drop any snapshot already inside the template (re-export from an exported file)
@@ -72,8 +75,9 @@ export async function exportHtml(
     html = html.slice(0, start) + html.slice(end + 9);
   }
   const snap: EmbeddedSnapshot = {
-    app: 'INGOVIQ AI', version: 1, company, createdAt: new Date().toISOString(),
-    files: await Promise.all(files.map(async (f) => ({ name: f.name, size: f.size, kind: f.kind, lastModified: f.lastModified, b64: await toB64(f.buffer) }))),
+    app: 'INGOVIQ AI', version: 2, company, createdAt: new Date().toISOString(), dataset,
+    // raw files are embedded too when small, so "Get data" inside the HTML can add to them
+    files: files.reduce((s, f) => s + f.size, 0) > RAW_LIMIT ? [] : await Promise.all(files.map(async (f) => ({ name: f.name, size: f.size, kind: f.kind, lastModified: f.lastModified, b64: await toB64(f.buffer) }))),
     inputs, visuals, measures,
   };
   // JSON inside <script> must never contain "</script" — escape "<"

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as echarts from 'echarts/core';
 import { BarChart, LineChart, PieChart, GaugeChart, RadarChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, MarkLineComponent, RadarComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { fmtCr, fmtPct, fmtX, fmtNum, fmtINR } from '../engine/format';
+import { HideCtx, HideBox, vizKey } from './common';
 
 echarts.use([BarChart, LineChart, PieChart, GaugeChart, RadarChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, MarkLineComponent, RadarComponent, CanvasRenderer]);
 
@@ -127,6 +128,9 @@ export function ChartCard({ title, sub, spec, height = 280, onCategoryClick, not
   const [type, setType] = useState<ChartType>(spec.type || 'bar');
   const [menu, setMenu] = useState(false);
   const [big, setBig] = useState(false);
+  const hide = useContext(HideCtx);
+  const hk = vizKey(hide.page, title);
+  const isHiddenViz = hide.hidden.includes(hk);
   const chartRef = useRef<echarts.ECharts | null>(null);
   useEffect(() => { setType(spec.type || 'bar'); }, [spec.type]);
   const option = useMemo(() => (type === 'table' ? null : buildOption(spec, type)), [spec, type, themeKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -153,11 +157,12 @@ export function ChartCard({ title, sub, spec, height = 280, onCategoryClick, not
   ) : (
     <EChart option={option!} height={big ? Math.min(window.innerHeight * 0.7, 640) : height} onReady={(c) => (chartRef.current = c)} onClick={onCategoryClick} />
   );
+  if (isHiddenViz && !hide.customize) return null;
   const card = (
-    <div className={`card ${className || ''}`} id={id}>
+    <div className={`card ${className || ''} ${isHiddenViz ? 'viz-dim' : ''}`} id={id}>
       <div className="card-head">
         <div>
-          <div className="card-title">{title}</div>
+          <div className="card-title"><HideBox k={hk} />{title}</div>
           {sub && <div className="card-sub">{sub}</div>}
         </div>
         <div className="card-tools">

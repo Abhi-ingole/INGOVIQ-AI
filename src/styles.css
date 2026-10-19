@@ -221,3 +221,12 @@ textarea.code { width: 100%; min-height: 64px; border: 1px solid var(--border-st
 .export-root .page { box-shadow: none; max-width: none; border-radius: 0; }
 .export-root .card-tools, .export-root .builder, .export-root details > summary { display: none !important; }
 @media print { .titlebar, .ribbon, .rail, .pane, .tabs, .card-tools { display: none !important; } .app { display: block; height: auto; } .canvas { overflow: visible; } }
+
+/* show / hide customisation */
+[data-ingv-hidden="1"] { display: none !important; }
+[data-ingv-hidden="dim"], [data-sec-hidden="dim"], .viz-dim, .tab-hidden { opacity: .38; }
+.hidebox { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; cursor: pointer; font-weight: 400; }
+.hidebox input { width: 15px; height: 15px; accent-color: var(--brand-600, #1f4fd1); cursor: pointer; }
+.customize-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-left: 3px solid var(--brand-600, #1f4fd1); }
+.tab .hidebox { margin-right: 4px; }
+.chip .clear { border: 0; background: transparent; cursor: pointer; color: inherit; padding: 0 0 0 4px; }

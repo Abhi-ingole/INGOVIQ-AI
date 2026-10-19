@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { buildDataset } from './engine/load';
-import { analyse } from './engine/analyse';
-import { DEFAULT_INPUTS, type ManualInputs } from './engine/types';
+import { analyse, effectiveDataset } from './engine/analyse';
+import { DEFAULT_INPUTS, type ManualInputs, type Dataset } from './engine/types';
+import { buildDatasetFromFiles, autoInputs, mergeInputs } from './engine/ingest/pack';
+import { browserPdfLoader } from './ui/pdfLoader';
+import { type Incoming, ACCEPT, fromFileList, pickDirectory } from './ui/fileIntake';
+import { LoanFile } from './ui/pages/LoanFile';
 import { readWorkbook, detectKind, type FileKind } from './engine/workbook';
 import { sortFYs } from './engine/utils';
 import type { PageCtx } from './ui/ctx';
@@ -17,14 +20,14 @@ import { Settings } from './ui/pages/Settings';
 import { Home, Guide, type LoadedFile } from './ui/pages/Home';
 import { idbGet, idbSet, lsGet, lsGetArr, lsSet } from './ui/store';
 import { exportExcel, exportPdf, exportPng } from './ui/exporters';
-import { ExportMode } from './ui/common';
+import { ExportMode, HideCtx, HideBox, useSectionHiding, type HideState } from './ui/common';
 import logoFull from './assets/logo-full.png';
 import logoIcon from './assets/logo-icon.png';
 import { exportHtml, readEmbedded, b64ToBuffer, type EmbeddedSnapshot } from './ui/htmlExport';
 
 interface StoredFile extends LoadedFile { buffer: ArrayBuffer }
 type View = 'home' | 'report' | 'data' | 'model' | 'settings' | 'guide';
-const PAGES = ['Overview', 'Financials', 'Ratios', 'Working Capital', 'GST', 'Banking', 'Reconciliation', 'Ageing & Bureau', 'Risk & SWOT', 'Credit Decision', 'My Visuals'] as const;
+const PAGES = ['Overview', 'Financials', 'Ratios', 'Working Capital', 'GST', 'Banking', 'Reconciliation', 'Ageing & Bureau', 'Risk & SWOT', 'Credit Decision', 'Loan File', 'My Visuals'] as const;
 type Page = (typeof PAGES)[number];
 const PAGE_SUB: Record<Page, string> = {
   Overview: 'Sections 1–2 · Company & credit snapshot, executive AI credit summary',
@@ -37,14 +40,21 @@ const PAGE_SUB: Record<Page, string> = {
   'Ageing & Bureau': 'Part E · Sections 29–30 · Invoice ageing and CIBIL / CMR',
   'Risk & SWOT': 'Parts F–G · Sections 31–35 · Red flags, SWOT and integrated credit score',
   'Credit Decision': 'Part H · Sections 36–40 · Funding capacity, product mapping, recommendation, analyst remarks',
+  'Loan File': 'Every document received — inventory, statement coverage, GSTR-3B, loans, bureau, ageing, Tally ledgers',
   'My Visuals': 'Build your own visuals from the cleaned data and measures',
 };
+const EMPTY_DS: Dataset = { financial: null, gst: null, banking: null, files: [], log: [] };
+const EXCEL_RE = /\.(xlsx|xlsm|xls|csv)$/i;
 
 const hasFSA = typeof window !== 'undefined' && 'showOpenFilePicker' in window && window.self === window.top;
 
 export default function App() {
   const [files, setFiles] = useState<StoredFile[]>([]);
-  const [inp, setInpState] = useState<ManualInputs>(() => lsGet('ingoviq.inputs', DEFAULT_INPUTS));
+  const [inp, setInpState] = useState<ManualInputs>(() => ({ ...DEFAULT_INPUTS, ...lsGet('ingoviq.inputs', DEFAULT_INPUTS) }));
+  const [builtDs, setBuiltDs] = useState<Dataset>(EMPTY_DS);
+  const [frozenDs, setFrozenDs] = useState<Dataset | null>(null);
+  const [customize, setCustomize] = useState(false);
+  const [progress, setProgress] = useState('');
   const [visuals, setVisualsState] = useState<CustomVisual[]>(() => lsGetArr('ingoviq.visuals'));
   const [measures, setMeasuresState] = useState<CustomMeasure[]>(() => lsGetArr('ingoviq.measures'));
   const [view, setView] = useState<View>('home');
@@ -63,6 +73,7 @@ export default function App() {
   const pageRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
 
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast((t) => (t === m ? '' : t)), 3500); }, []);
   const setInp = useCallback((p: Partial<ManualInputs>) => setInpState((s) => { const n = { ...s, ...p }; lsSet('ingoviq.inputs', n); return n; }), []);
@@ -87,6 +98,7 @@ export default function App() {
     const emb = readEmbedded();
     if (emb) {
       setSnapshot(emb);
+      if (emb.dataset) setFrozenDs(emb.dataset);
       setFiles(emb.files.map((f) => ({ name: f.name, size: f.size, kind: f.kind, lastModified: f.lastModified, buffer: b64ToBuffer(f.b64) })));
       setInpState({ ...DEFAULT_INPUTS, ...emb.inputs });
       setVisualsState(emb.visuals || []);
@@ -108,34 +120,46 @@ export default function App() {
   }, []);
   const persist = (fs: StoredFile[]) => { idbSet('files', fs); };
 
-  const addFiles = useCallback(async (list: { file: File; handle?: FileSystemFileHandle }[]) => {
+  /** replaceAll: a folder / zip is a new loan file, so it replaces whatever was loaded before */
+  const addFiles = useCallback(async (list: Incoming[], replaceAll = false) => {
     if (!list.length) return;
-    setBusy('Reading and cleaning files…');
+    setBusy(`Reading ${list.length} file(s)…`);
     const added: StoredFile[] = [];
-    for (const { file, handle } of list) {
+    for (const { file, handle, path } of list) {
+      if (/(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini)$|(^|\/)\._/i.test(path)) continue;
       const buffer = await file.arrayBuffer();
       let kind: FileKind = 'unknown';
-      try { kind = detectKind(readWorkbook(buffer, file.name)); } catch { /* reported in cleaning log */ }
-      added.push({ name: file.name, size: file.size, kind, handle, lastModified: file.lastModified, buffer });
+      if (EXCEL_RE.test(file.name)) try { kind = detectKind(readWorkbook(buffer, file.name)); } catch { /* reported in cleaning log */ }
+      added.push({ name: path || file.name, size: file.size, kind, handle, lastModified: file.lastModified, buffer });
     }
+    const pack = replaceAll || added.length > 3 || added.some((f) => /\.(zip|pdf)$/i.test(f.name));
     setFiles((cur) => {
-      // a new file of the same kind replaces the old one (next company / new version)
-      const kept = cur.filter((c) => !added.some((a) => a.name === c.name || (a.kind !== 'unknown' && a.kind === c.kind)));
+      // a new file of the same kind replaces the old one (next company / new version); a folder / zip replaces everything
+      const kept = pack && replaceAll ? [] : cur.filter((c) => !added.some((a) => a.name === c.name || (a.kind !== 'unknown' && a.kind === c.kind)));
       const next = [...kept, ...added];
       persist(next);
       return next;
     });
     setBusy('');
     setSnapshot(null);
+    setFrozenDs(null);
     setLastRefresh(new Date());
-    say(`Loaded ${added.map((a) => `${a.name} (${a.kind})`).join(', ')}`);
+    say(added.length > 3 ? `Loaded ${added.length} files — building the report…` : `Loaded ${added.map((a) => `${a.name} (${a.kind})`).join(', ')}`);
   }, [say]);
+
+  const pickFolder = async () => {
+    try {
+      const got = await pickDirectory();
+      if (got) { await addFiles(got, true); setNeedReconnect(false); return; }
+    } catch (e) { if ((e as Error).name === 'AbortError') return; }
+    folderInput.current?.click();
+  };
 
   const pick = async () => {
     if (!hasFSA) { fileInput.current?.click(); return; }
     try {
-      const handles: FileSystemFileHandle[] = await (window as unknown as { showOpenFilePicker: (o: object) => Promise<FileSystemFileHandle[]> }).showOpenFilePicker({ multiple: true, types: [{ description: 'Excel workbooks', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xlsm'], 'application/vnd.ms-excel': ['.xls'], 'text/csv': ['.csv'] } }] });
-      await addFiles(await Promise.all(handles.map(async (h) => ({ file: await h.getFile(), handle: h }))));
+      const handles: FileSystemFileHandle[] = await (window as unknown as { showOpenFilePicker: (o: object) => Promise<FileSystemFileHandle[]> }).showOpenFilePicker({ multiple: true, types: [{ description: 'Excel, PDF or zip', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xlsm'], 'application/vnd.ms-excel': ['.xls'], 'text/csv': ['.csv'], 'application/pdf': ['.pdf'], 'application/zip': ['.zip'] } }] });
+      await addFiles(await Promise.all(handles.map(async (h) => { const file = await h.getFile(); return { file, path: file.name, handle: h }; })));
       setNeedReconnect(false);
     } catch (e) {
       if ((e as Error).name !== 'AbortError') fileInput.current?.click();
@@ -188,12 +212,36 @@ export default function App() {
     if (!ok) { say('Select the updated Excel file(s) to refresh'); pick(); }
   };
 
-  const ds = useMemo(() => buildDataset(files.map((f) => ({ name: f.name, data: f.buffer, size: f.size, forceKind: f.kind }))), [files]);
-  const a = useMemo(() => analyse(ds, inp), [ds, inp]);
-  const hasData = !!(ds.financial || ds.gst || ds.banking);
+  // build the dataset (async: PDFs are read with pdf.js); a newer build cancels an older one
+  const pwKey = (inp.pdfPasswords || []).join('\u0001');
+  useEffect(() => {
+    let cancelled = false;
+    if (!files.length) { setBuiltDs(EMPTY_DS); return; }
+    const many = files.length > 3 || files.some((f) => /\.(zip|pdf)$/i.test(f.name));
+    if (many) setProgress('Reading files…');
+    buildDatasetFromFiles(files.map((f) => ({ path: f.name, data: f.buffer, size: f.size, forceKind: EXCEL_RE.test(f.name) && f.kind !== 'unknown' ? f.kind : undefined })), browserPdfLoader, {
+      passwords: inp.pdfPasswords,
+      onProgress: (d, t, path) => { if (!cancelled && many) setProgress(d < t ? `Reading ${d + 1} of ${t}: ${path.split('/').pop()}` : 'Calculating…'); },
+    }).then((d) => { if (!cancelled) { setBuiltDs(d); setProgress(''); } })
+      .catch((e) => { if (!cancelled) { setProgress(''); say(`Could not build the report: ${(e as Error).message}`); } });
+    return () => { cancelled = true; };
+  }, [files, pwKey, say]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const ds0 = frozenDs || builtDs;
+  const auto = useMemo(() => autoInputs(ds0), [ds0]);
+  const effInp = useMemo(() => mergeInputs({ ...DEFAULT_INPUTS, ...inp }, auto, DEFAULT_INPUTS), [inp, auto]);
+  const ds = useMemo(() => effectiveDataset(ds0, effInp), [ds0, effInp]);
+  const a = useMemo(() => analyse(ds, effInp), [ds, effInp]);
+  const hidden = effInp.hidden || [];
+  const toggleHidden = useCallback((k: string) => setInpState((s) => { const h = s.hidden || []; const n = { ...s, hidden: h.includes(k) ? h.filter((x) => x !== k) : [...h, k] }; lsSet('ingoviq.inputs', n); return n; }), []);
+  const hideFor = (p: string, exp = false): HideState => ({ page: p, hidden, customize: customize && !exp, toggle: toggleHidden });
+  const visiblePages = PAGES.filter((p) => customize || !hidden.includes(`page:${p}`));
+  useSectionHiding(pageRef, [page, view, hidden, customize, ds]);
+  useSectionHiding(exportRef, [exporting, hidden]);
+  const hasData = !!(ds.financial || ds.gst || ds.banking || ds.docs?.length);
   const allFYs = useMemo(() => sortFYs([...(a.fin?.fys || []), ...(a.gst?.fys || [])]), [a]);
   const toggleFY = useCallback((fy: string) => { if (!/^FY /.test(fy)) return; setFySel((s) => (s.includes(fy) ? s.filter((x) => x !== fy) : [...s, fy])); }, []);
-  const ctx: PageCtx = { a, ds, inp, setInp, fySel, toggleFY, themeKey };
+  const ctx: PageCtx = { a, ds, inp: effInp, setInp, fySel, toggleFY, themeKey };
 
   const renderPage = (p: Page, c: PageCtx) => {
     switch (p) {
@@ -207,6 +255,7 @@ export default function App() {
       case 'Ageing & Bureau': return <AgeingBureau {...c} />;
       case 'Risk & SWOT': return <RiskSwot {...c} />;
       case 'Credit Decision': return <Decision {...c} />;
+      case 'Loan File': return <LoanFile {...c} />;
       case 'My Visuals': return <MyVisuals {...c} visuals={visuals} setVisuals={setVisuals} measures={measures} />;
     }
   };
@@ -217,6 +266,8 @@ export default function App() {
     setBusy('Preparing PDF report…');
     await new Promise((r) => setTimeout(r, 1500)); // let every chart render in light theme
     try {
+      exportRef.current?.querySelectorAll('details').forEach((d) => { (d as HTMLDetailsElement).open = true; });
+      await new Promise((r) => setTimeout(r, 300));
       const secs = [...(exportRef.current?.querySelectorAll<HTMLElement>('.export-sec') || [])];
       await exportPdf(secs, a.company, setBusy);
       say('PDF report downloaded');
@@ -228,7 +279,7 @@ export default function App() {
   const doHtml = async () => {
     setBusy('Building interactive HTML…');
     try {
-      const size = await exportHtml(files, a.company, inp, visuals, measures);
+      const size = await exportHtml(files, a.company, inp, visuals, measures, ds0);
       say(`Interactive HTML downloaded (${(size / 1048576).toFixed(1)} MB) — open it in any browser, works offline`);
     } catch (e) { say(`HTML export failed: ${(e as Error).message}`); }
     setBusy('');
@@ -236,7 +287,7 @@ export default function App() {
 
   const clearAll = () => {
     if (!confirm('Remove all loaded files from this browser?')) return;
-    setFiles([]); persist([]); setView('home'); setFySel([]);
+    setFiles([]); persist([]); setView('home'); setFySel([]); setFrozenDs(null); setSnapshot(null);
   };
 
   const homeFiles: LoadedFile[] = files.map(({ buffer: _b, ...f }) => f); // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -254,7 +305,8 @@ export default function App() {
       <div className="ribbon">
         <div className="group">
           <button className="rb" onClick={() => { setView('home'); }}><span className="ic">📥</span>Get data</button>
-          <button className="rb" onClick={pick}><span className="ic">📂</span>Excel workbook</button>
+          <button className="rb" onClick={pick}><span className="ic">📂</span>Files</button>
+          <button className="rb" onClick={pickFolder} title="Load a whole loan-file folder (all sub-folders)"><span className="ic">🗂</span>Folder</button>
           <button className="rb" disabled={!files.length} onClick={refresh}><span className="ic">⟳</span>Refresh</button>
           <button className={`rb ${live && liveCapable ? 'on' : ''}`} disabled={!liveCapable} onClick={() => setLive(!live)} title={liveCapable ? 'Auto-refresh when the Excel file is saved' : 'Open files with Get data in Chrome/Edge to enable'}><span className="ic">{live && liveCapable ? '🟢' : '⚪'}</span>Live</button>
           <button className="rb" disabled={!files.length} onClick={clearAll}><span className="ic">🗑</span>Clear</button>
@@ -263,10 +315,11 @@ export default function App() {
           <button className="rb" disabled={!hasData} onClick={() => { setView('report'); setPage('My Visuals'); }}><span className="ic">📊</span>New visual</button>
           <button className="rb" disabled={!hasData} onClick={() => setView('model')}><span className="ic">ƒx</span>New measure</button>
           <button className="rb" disabled={!hasData} onClick={() => setView('data')}><span className="ic">▦</span>Transform data</button>
+          <button className={`rb ${customize ? 'on' : ''}`} disabled={!hasData} onClick={() => { setCustomize(!customize); if (!customize) setView('report'); }} title="Tick / untick pages, sections and visuals to show or hide them — also in PDF and HTML"><span className="ic">☑</span>Show / hide</button>
         </div>
         <div className="group">
           <button className="rb" disabled={!hasData} onClick={doPdf}><span className="ic">📄</span>PDF report</button>
-          <button className="rb" disabled={!hasData} onClick={() => exportExcel(a, ds, measures)}><span className="ic">📗</span>Excel</button>
+          <button className="rb" disabled={!hasData} onClick={() => exportExcel(a, ds, measures, hidden)}><span className="ic">📗</span>Excel</button>
           <button className="rb" disabled={!hasData} title="One offline HTML file with the full interactive dashboard and data" onClick={doHtml}><span className="ic">🌐</span>HTML</button>
           <button className="rb" disabled={!hasData || view === 'home'} onClick={() => pageRef.current && exportPng(pageRef.current, `${a.company}_${view === 'report' ? page : view}`)}><span className="ic">🖼</span>PNG page</button>
         </div>
@@ -290,7 +343,8 @@ export default function App() {
         <main className="canvas">
           {view === 'home' && (
             <Home files={homeFiles} supportsLive={hasFSA} hasData={hasData} needReconnect={needReconnect} onReconnect={reconnect}
-              onFiles={(fs) => addFiles(fs.map((file) => ({ file })))} onDropItems={(x) => addFiles(x)} onPick={pick} onOpenDashboard={() => setView('report')}
+              onFiles={(fs) => addFiles(fromFileList(fs))} onDropItems={(x, isFolder) => addFiles(x, isFolder)} onPick={pick} onPickFolder={pickFolder} onOpenDashboard={() => setView('report')}
+              progress={progress} docs={ds.docs || []} passwords={inp.pdfPasswords || []} onPasswords={(p) => setInp({ pdfPasswords: p })}
               onClearFile={(n) => setFiles((c) => { const x = c.filter((f) => f.name !== n); persist(x); return x; })}
               onSetKind={(n, k) => setFiles((c) => { const x = c.map((f) => (f.name === n ? { ...f, kind: k } : f)); persist(x); return x; })} />
           )}
@@ -300,7 +354,17 @@ export default function App() {
                 <>
                   <div className="page-head"><div><h1>{page}</h1><div className="sub">{PAGE_SUB[page]} · {a.company}</div></div>
                     {fySel.length > 0 && <div className="small">Filtered: {fySel.join(', ')} <button className="btn small" onClick={() => setFySel([])}>Clear filter</button></div>}</div>
-                  {renderPage(page, ctx)}
+                  {customize && (
+                    <div className="note customize-bar">
+                      <b>Show / hide mode.</b> Untick a page tab, a section title or a visual to hide it from the dashboard, the PDF report and the HTML export. Hidden items stay dimmed here so you can tick them back.
+                      <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                        {hidden.length > 0 && <button className="btn small" onClick={() => setInp({ hidden: [] })}>Show everything ({hidden.length} hidden)</button>}
+                        <button className="btn small primary" onClick={() => setCustomize(false)}>Done</button>
+                      </span>
+                    </div>
+                  )}
+                  {hidden.includes(`page:${page}`) && <div className="note warn">This page is hidden — it is left out of the tab bar, PDF and HTML. <button className="btn small" onClick={() => toggleHidden(`page:${page}`)}>Show page</button></div>}
+                  <HideCtx.Provider value={hideFor(page)}>{renderPage(page, ctx)}</HideCtx.Provider>
                 </>
               )}
               {view === 'data' && hasData && <DataView {...ctx} />}
@@ -327,7 +391,8 @@ export default function App() {
                   <h4>Data sources</h4>
                   {(['financial', 'gst', 'banking'] as const).map((k) => {
                     const f = files.find((x) => x.kind === k);
-                    return <div key={k} className="small" style={{ padding: '3px 0' }}>{f ? '✅' : '⬜'} {k === 'financial' ? 'Financials' : k === 'gst' ? 'GST' : 'Banking'} {f && <span className="muted">· {f.handle ? 'live' : 'static'}</span>}</div>;
+                    const has = k === 'financial' ? !!ds.financial : k === 'gst' ? !!ds.gst : !!ds.banking;
+                    return <div key={k} className="small" style={{ padding: '3px 0' }}>{has ? '✅' : '⬜'} {k === 'financial' ? 'Financials' : k === 'gst' ? 'GST' : 'Banking'} {f && <span className="muted">· {f.handle ? 'live' : 'static'}</span>}</div>;
                   })}
                 </div>
                 {hasData && (
@@ -344,12 +409,13 @@ export default function App() {
       </div>
 
       <div className="tabs">
-        {view === 'report' && hasData ? PAGES.map((p) => <button key={p} className={`tab ${p === page ? 'on' : ''}`} onClick={() => setPage(p)}>{p}</button>) : <span className="small muted" style={{ paddingLeft: 8 }}>{view === 'home' ? 'Get data' : view === 'data' ? 'Data view' : view === 'model' ? 'Model' : view === 'settings' ? 'Settings' : 'Guide'}</span>}
-        <span className="statusbar">{view === 'report' && hasData ? `Page ${PAGES.indexOf(page) + 1} of ${PAGES.length} · ` : ''}{files.length} file(s) · processed locally</span>
+        {view === 'report' && hasData ? visiblePages.map((p) => <button key={p} className={`tab ${p === page ? 'on' : ''} ${hidden.includes(`page:${p}`) ? 'tab-hidden' : ''}`} onClick={() => setPage(p)}>{customize && <HideCtx.Provider value={hideFor(p)}><HideBox k={`page:${p}`} /></HideCtx.Provider>}{p}</button>) : <span className="small muted" style={{ paddingLeft: 8 }}>{view === 'home' ? 'Get data' : view === 'data' ? 'Data view' : view === 'model' ? 'Model' : view === 'settings' ? 'Settings' : 'Guide'}</span>}
+        <span className="statusbar">{view === 'report' && hasData ? `Page ${visiblePages.indexOf(page) + 1} of ${visiblePages.length} · ` : ''}{files.length} file(s) · processed locally</span>
       </div>
 
-      <input ref={fileInput} type="file" multiple accept=".xlsx,.xlsm,.xls,.csv" hidden onChange={(e) => { if (e.target.files) addFiles([...e.target.files].map((file) => ({ file }))); e.target.value = ''; }} />
-      {(toast || busy) && <div className="toast">{busy || toast}</div>}
+      <input ref={fileInput} type="file" multiple accept={ACCEPT} hidden onChange={(e) => { if (e.target.files) addFiles(fromFileList(e.target.files)); e.target.value = ''; }} />
+      <input ref={folderInput} type="file" multiple hidden {...{ webkitdirectory: '', directory: '' }} onChange={(e) => { if (e.target.files) addFiles(fromFileList(e.target.files), true); e.target.value = ''; }} />
+      {(toast || busy || progress) && <div className="toast">{busy || progress || toast}</div>}
 
       {exporting && (
         <ExportMode.Provider value={true}><div className="export-root" ref={exportRef}>
@@ -360,10 +426,10 @@ export default function App() {
                 <div className="muted">Generated {new Date().toLocaleString('en-IN')} · Overall AI credit score {a.risk.overall.score ?? '—'}/100 · {a.risk.decision.decision}</div></div>
             </div>
           </div>
-          {PAGES.filter((p) => p !== 'My Visuals' || visuals.length).map((p) => (
+          {PAGES.filter((p) => (p !== 'My Visuals' || visuals.length) && !hidden.includes(`page:${p}`) && (p !== 'Loan File' || ds.docs?.length)).map((p) => (
             <div key={p} className="page export-sec" data-title={p}>
               <div className="page-head"><div><h1>{p}</h1><div className="sub">{PAGE_SUB[p]} · {a.company}</div></div></div>
-              {renderPage(p, { ...ctx, themeKey, exporting: true })}
+              <HideCtx.Provider value={hideFor(p, true)}>{renderPage(p, { ...ctx, themeKey, exporting: true })}</HideCtx.Provider>
             </div>
           ))}
         </div></ExportMode.Provider>

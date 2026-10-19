@@ -126,6 +126,10 @@ export interface ManualInputs {
   ageing: { bucket: string; receivable: number; payable: number }[];
   partyClassOverrides: Record<string, TxnClass>;
   financialOverrides: Record<string, Record<string, number>>; // key -> FY -> value
+  manualFYs: string[]; // financial years typed in by hand when statements are scanned PDFs
+  hidden: string[]; // page / section / visual keys the user has unticked (hidden everywhere incl. exports)
+  bankLast12: boolean; // limit banking analysis to the latest 12 months
+  pdfPasswords: string[];
 }
 
 export const DEFAULT_INPUTS: ManualInputs = {
@@ -151,6 +155,10 @@ export const DEFAULT_INPUTS: ManualInputs = {
   ],
   partyClassOverrides: {},
   financialOverrides: {},
+  manualFYs: [],
+  hidden: [],
+  bankLast12: false,
+  pdfPasswords: [],
 };
 
 export interface Dataset {
@@ -159,4 +167,24 @@ export interface Dataset {
   banking: BankingData | null;
   files: { name: string; kind: 'financial' | 'gst' | 'banking' | 'unknown'; size: number; loadedAt: string }[];
   log: CleaningLog[];
+  docs?: DocEntry[];
+  extra?: ExtraData;
+}
+
+/* ---------------- Loan-file documents (folder / zip upload) ---------------- */
+export interface DocEntry { path: string; size: number; type: string; status: 'used' | 'duplicate' | 'skipped' | 'needs password' | 'scanned' | 'error' | 'not used'; note: string }
+export interface ExtraData {
+  loans: import('./ingest/excelFormats').LoanRow[];
+  ageing: import('./ingest/excelFormats').AgeingResult[];
+  cibil: (import('./ingest/docsMisc').CibilCommercial | import('./ingest/docsMisc').CibilConsumer)[];
+  networth: import('./ingest/docsMisc').NetWorthCert[];
+  gstr3b: import('./ingest/gstr3b').Gstr3b[];
+  profile: Record<string, string>;
+  directors: { name: string; designation: string; appointed: string }[];
+  gstCerts: { gstin: string; state: string; legalName: string; regDate: string }[];
+  ledgerParties: import('./ingest/excelFormats').LedgerParty[];
+  ledgerPeriod: string;
+  momSales: import('./ingest/excelFormats').MomParty[];
+  momPurchase: import('./ingest/excelFormats').MomParty[];
+  statements: { file: string; account: string; bank: string; from: string; to: string; txns: number; mismatches: number }[];
 }

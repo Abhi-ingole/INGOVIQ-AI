@@ -4,6 +4,7 @@ import { Table, Chip } from '../common';
 import { ITEM_LABELS } from '../../engine/parseFinancial';
 import { fmtINR, fmtDate } from '../../engine/format';
 import { monthLabel } from '../../engine/utils';
+import { exportFinancialTemplate } from '../exporters';
 
 const TABS = ['Financial line items', 'Source rows', 'GST monthly', 'GST customers', 'GST suppliers', 'GST filings', 'Bank transactions', 'Cleaning log'] as const;
 
@@ -16,6 +17,19 @@ export function DataView({ a, ds, inp, setInp }: PageCtx) {
     if (v.trim() === '') delete cur[fy]; else cur[fy] = Number(v.replace(/,/g, ''));
     setInp({ financialOverrides: { ...inp.financialOverrides, [key]: cur } });
   };
+  const [newFy, setNewFy] = useState('');
+  const lastFys = (() => { const now = new Date(); const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; return [3, 2, 1].map((k) => `FY ${y - k}-${String((y - k + 1) % 100).padStart(2, '0')}`); })();
+  const addFy = (fy: string) => { const m = fy.trim().match(/^(?:FY\s*)?(20\d{2})\s*[-–/]\s*(\d{2,4})$/i); if (!m) return; const f = `FY ${m[1]}-${m[2].slice(-2)}`; setInp({ manualFYs: [...new Set([...(inp.manualFYs || []), f])].sort() }); setNewFy(''); };
+  const manualBar = (
+    <div className="note" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+      <span><b>Scanned audited statements?</b> Add the financial years and type the figures below (override column), or download the input template, fill it in Excel and upload it with Get data.</span>
+      <input value={newFy} onChange={(e) => setNewFy(e.target.value)} placeholder="FY 2024-25" style={{ width: 110, padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6 }} onKeyDown={(e) => e.key === 'Enter' && addFy(newFy)} />
+      <button className="btn small primary" onClick={() => addFy(newFy)}>Add year</button>
+      {!(inp.manualFYs || []).length && <button className="btn small" onClick={() => setInp({ manualFYs: lastFys })}>Add last 3 years ({lastFys.join(', ')})</button>}
+      {(inp.manualFYs || []).map((f) => <span key={f} className="chip neutral">{f} <button className="clear" title="Remove year" onClick={() => setInp({ manualFYs: inp.manualFYs.filter((x) => x !== f) })}>✕</button></span>)}
+      <button className="btn small" onClick={() => exportFinancialTemplate(a.company, fin?.fys.length ? fin.fys : (inp.manualFYs || []).length ? inp.manualFYs : lastFys)}>⤓ Financial input template</button>
+    </div>
+  );
   const filt = <T,>(rows: T[], f: (r: T) => string) => (q ? rows.filter((r) => f(r).toLowerCase().includes(q.toLowerCase())) : rows);
   return (
     <>
@@ -25,6 +39,7 @@ export function DataView({ a, ds, inp, setInp }: PageCtx) {
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>{TABS.map((t) => <button key={t} className={`btn small ${t === tab ? 'primary' : ''}`} onClick={() => setTab(t)}>{t}</button>)}</div>
 
+      {tab === 'Financial line items' && manualBar}
       {tab === 'Financial line items' && (fin ? (
         <div className="tbl-wrap" style={{ maxHeight: 640 }}>
           <table className="tbl">
@@ -40,7 +55,7 @@ export function DataView({ a, ds, inp, setInp }: PageCtx) {
             </tbody>
           </table>
         </div>
-      ) : <div className="note warn">Financial file not loaded.</div>)}
+      ) : <div className="note warn">No financial statements could be read. Add the years above to type the audited figures.</div>)}
 
       {tab === 'Source rows' && fin && (
         <Table rows={filt(fin.rawRows, (r) => r.label + r.sheet)} maxHeight={640} cols={[

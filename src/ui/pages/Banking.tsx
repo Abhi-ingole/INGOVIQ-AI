@@ -18,7 +18,7 @@ const txnCols = [
   { key: 'cls', label: 'Classification', render: (r: ClassifiedTxn) => <Chip s={r.cls} tone={r.cls === 'Business' ? 'good' : r.cls === 'Return / Reversal' ? 'serious' : 'info'} /> },
 ];
 
-export function Banking({ a, inp, setInp, themeKey }: PageCtx) {
+export function Banking({ a, inp, setInp, themeKey, exporting }: PageCtx) {
   const b = a.bank;
   const [monthSel, setMonthSel] = useState<string[]>([]);
   const [partyFilter, setPartyFilter] = useState('');
@@ -135,15 +135,15 @@ export function Banking({ a, inp, setInp, themeKey }: PageCtx) {
       <Section num="22" title="Party-wise inflow / outflow" />
       <div className="grid g2">
         <div><div className="card-title" style={{ marginBottom: 6 }}>Top inflow parties</div>
-          <Table rows={b.parties.inflow.slice(0, 15)} cols={[{ key: 'party', label: 'Party', wrap: true }, { key: 'amount', label: 'Amount', num: true, render: (r) => fmtINR(r.amount) }, { key: 'share', label: '% of inflow', num: true, render: (r) => fmtPct(r.share) }, { key: 'cls', label: 'Class', render: (r) => <span className="small">{r.cls}</span> }]} /></div>
+          <Table rows={(exporting ? b.parties.inflow : b.parties.inflow.slice(0, 15))} cols={[{ key: 'party', label: 'Party', wrap: true }, { key: 'amount', label: 'Amount', num: true, render: (r) => fmtINR(r.amount) }, { key: 'share', label: '% of inflow', num: true, render: (r) => fmtPct(r.share) }, { key: 'cls', label: 'Class', render: (r) => <span className="small">{r.cls}</span> }]} /></div>
         <div><div className="card-title" style={{ marginBottom: 6 }}>Top outflow parties</div>
-          <Table rows={b.parties.outflow.slice(0, 15)} cols={[{ key: 'party', label: 'Party', wrap: true }, { key: 'amount', label: 'Amount', num: true, render: (r) => fmtINR(r.amount) }, { key: 'share', label: '% of outflow', num: true, render: (r) => fmtPct(r.share) }, { key: 'cls', label: 'Class', render: (r) => <span className="small">{r.cls}</span> }]} /></div>
+          <Table rows={(exporting ? b.parties.outflow : b.parties.outflow.slice(0, 15))} cols={[{ key: 'party', label: 'Party', wrap: true }, { key: 'amount', label: 'Amount', num: true, render: (r) => fmtINR(r.amount) }, { key: 'share', label: '% of outflow', num: true, render: (r) => fmtPct(r.share) }, { key: 'cls', label: 'Class', render: (r) => <span className="small">{r.cls}</span> }]} /></div>
       </div>
       <div className="note small">Party concentration: top 5 inflow parties = {fmtPct(b.parties.inflow.slice(0, 5).reduce((s, p) => s + p.share, 0))} of inflow; top 5 outflow parties = {fmtPct(b.parties.outflow.slice(0, 5).reduce((s, p) => s + p.share, 0))} of outflow.</div>
       <details style={{ marginTop: 8 }} open>
         <summary className="small" style={{ cursor: 'pointer', fontWeight: 600 }}>Party classification (edit to correct — dashboard recalculates instantly)</summary>
         <input placeholder="Search party…" value={partyFilter} onChange={(e) => setPartyFilter(e.target.value)} style={{ margin: '8px 0', padding: '5px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, width: 260, background: 'var(--surface)' }} />
-        <Table rows={b.partyClasses.filter((p) => p.party.toLowerCase().includes(partyFilter.toLowerCase())).slice(0, 200)} maxHeight={360} cols={[
+        <Table rows={b.partyClasses.filter((p) => p.party.toLowerCase().includes(partyFilter.toLowerCase())).slice(0, exporting ? undefined : 200)} maxHeight={360} cols={[
           { key: 'party', label: 'Party', wrap: true, sort: (r) => r.party },
           { key: 'credit', label: 'Credits', num: true, render: (r) => fmtINR(r.credit), sort: (r) => r.credit },
           { key: 'debit', label: 'Debits', num: true, render: (r) => fmtINR(r.debit), sort: (r) => r.debit },

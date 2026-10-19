@@ -224,7 +224,11 @@ export function assessRisk(fd: FinancialData | null, fin: FinAnalysis | null, _g
   ];
   if (additionalDebt !== null && additionalDebt <= 0) conditions.unshift(`No additional debt headroom at current leverage (TOL/TNW ${fmtX(toltnw)}) — equity / quasi-equity infusion or reduction of outside liabilities before fresh exposure; consider only substitution / restructuring of existing limits`);
   if (rec.coverageNote) conditions.push('GST returns / data for GSTINs not covered in the GST analysis');
-  const documents = ['CIBIL / CMR report of company and promoters', 'Debtor and creditor ageing as on latest date', 'Last 12 months bank statements of all operative accounts'];
+  const documents: string[] = [];
+  if (inp.cibilScore === null || inp.cmrRank === null) documents.push('CIBIL / CMR report of company and promoters');
+  if (!inp.ageing.some((a) => a.receivable || a.payable)) documents.push('Debtor and creditor ageing as on latest date');
+  if (!bank || bank.months.length < 12) documents.push('Last 12 months bank statements of all operative accounts');
+  if (!fin) documents.push('Audited financial statements for the last 3 years (text PDFs or the INGOVIQ financial input template)');
   if (!gst?.hsn.length) documents.push('HSN-wise sales summary (GSTR-1 Table 12)');
   if (!inp.promoterNetWorth) documents.push('Promoter net-worth statement');
 

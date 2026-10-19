@@ -2,7 +2,7 @@
    Usage: SAMPLES=/path/to/folder npx tsx scripts/verify.ts   (sample files are NOT committed) */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildDataset } from '../src/engine/load';
+import { buildDatasetFromFiles } from '../src/engine/ingest/pack';
 import { analyse } from '../src/engine/analyse';
 import { DEFAULT_INPUTS } from '../src/engine/types';
 
@@ -11,7 +11,7 @@ const files = readdirSync(dir).filter((f) => /\.xlsx?$/i.test(f)).map((f) => {
   const b = readFileSync(join(dir, f));
   return { name: f, size: b.length, data: b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer };
 });
-const ds = buildDataset(files);
+const ds = await buildDatasetFromFiles(files.map((f) => ({ path: f.name, data: f.data, size: f.size })), null);
 for (const l of ds.log) console.log(`[${l.level}] ${l.source}: ${l.message}`);
 const a = analyse(ds, DEFAULT_INPUTS);
 const show = (label: string, v: unknown) => console.log(label.padEnd(36), typeof v === 'object' ? JSON.stringify(v) : v);

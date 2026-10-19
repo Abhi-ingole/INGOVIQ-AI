@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import type { PageCtx } from '../ctx';
 import { pickFYs } from '../ctx';
 import { ChartCard } from '../Chart';
-import { Section, Chip, Disclaimer, Arrow, NoData, Kpi } from '../common';
+import { Section, Chip, Disclaimer, Arrow, NoData, Kpi, ExportMode } from '../common';
 import { fmtUnit, fmtCr, fmtINR, fmtPct, fmtX, fmtDays } from '../../engine/format';
 import { ITEM_LABELS } from '../../engine/parseFinancial';
 import type { Metric } from '../../engine/calcFinancial';
@@ -55,14 +55,13 @@ function MetricTable({ metrics, fys }: { metrics: Metric[]; fys: string[] }) {
 export function Financials({ a, ds, fySel, toggleFY, themeKey }: PageCtx) {
   const fin = a.fin;
   const [yearTab, setYearTab] = useState<string | null>(null);
+  const exporting = useContext(ExportMode);
   if (!fin || !ds.financial) return <><NoData what="Audited financial statements" /><Disclaimer /></>;
   const fys = pickFYs(fin.fys, fySel);
   const yr = yearTab && fin.fys.includes(yearTab) ? yearTab : fys[fys.length - 1];
   const P = (k: string) => fin.performance.find((m) => m.key === k)!;
   const items = ds.financial.items;
-  const revY = items.revenue_ops?.[yr] || null;
-  const taY = items.total_assets?.[yr] || null;
-  const stmt = (keys: string[], denom: number | null, denomLabel: string) => (
+  const stmt = (yr: string, keys: string[], denom: number | null, denomLabel: string) => (
     <div className="tbl-wrap">
       <table className="tbl">
         <thead><tr><th>Particulars</th><th className="num">{yr}</th><th className="num">% of {denomLabel}</th>{fin.fys.indexOf(yr) > 0 && <th className="num">vs {fin.fys[fin.fys.indexOf(yr) - 1]}</th>}</tr></thead>
@@ -89,6 +88,9 @@ export function Financials({ a, ds, fySel, toggleFY, themeKey }: PageCtx) {
       <Section num="3" title="Each financial year — presented separately" right={
         <div style={{ display: 'flex', gap: 4 }}>{fin.fys.map((f) => <button key={f} className={`btn small ${f === yr ? 'primary' : ''}`} onClick={() => setYearTab(f)}>{f}</button>)}</div>
       } />
+      {(exporting ? fin.fys : [yr]).map((yr) => (
+        <div key={yr} style={{ marginBottom: 14 }}>
+          {exporting && <div className="card-title" style={{ margin: '8px 0', fontSize: 15 }}>Financial year {yr}</div>}
       <div className="grid g5">
         <Kpi label={`Revenue ${shortFY(yr)}`} value={fmtCr(P('revenue').values[yr])} delta={<Arrow v={P('revenue').yoy[yr]} />} />
         <Kpi label="EBITDA" value={fmtCr(P('ebitda').values[yr])} delta={`Margin ${fmtPct(P('ebitda_margin').values[yr])}`} />
@@ -97,12 +99,15 @@ export function Financials({ a, ds, fySel, toggleFY, themeKey }: PageCtx) {
         <Kpi label="Total Debt" value={fmtCr(P('total_debt').values[yr])} delta={<Arrow v={P('total_debt').yoy[yr]} better="low" />} />
       </div>
       <div className="grid g2" style={{ marginTop: 12 }}>
-        <div><div className="card-title" style={{ margin: '4px 0 6px' }}>Profit & Loss — {yr}</div>{stmt(PL_KEYS, revY, 'revenue')}</div>
+        <div><div className="card-title" style={{ margin: '4px 0 6px' }}>Profit & Loss — {yr}</div>{stmt(yr, PL_KEYS, items.revenue_ops?.[yr] || null, 'revenue')}</div>
         <div>
-          <div className="card-title" style={{ margin: '4px 0 6px' }}>Equity & Liabilities — {yr}</div>{stmt(BS_LIAB, taY, 'total')}
-          <div className="card-title" style={{ margin: '12px 0 6px' }}>Assets — {yr}</div>{stmt(BS_ASSET, taY, 'total')}
+          <div className="card-title" style={{ margin: '4px 0 6px' }}>Equity & Liabilities — {yr}</div>{stmt(yr, BS_LIAB, items.total_assets?.[yr] || null, 'total')}
+          <div className="card-title" style={{ margin: '12px 0 6px' }}>Assets — {yr}</div>{stmt(yr, BS_ASSET, items.total_assets?.[yr] || null, 'total')}
         </div>
       </div>
+
+        </div>
+      ))}
 
       <Section num="3" title="Three-year financial performance — comparison, growth / decline" />
       <MetricTable metrics={fin.performance} fys={fys} />

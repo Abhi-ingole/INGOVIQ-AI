@@ -4,7 +4,7 @@ import { Section, Chip, Disclaimer, Table, Kpi } from '../common';
 import { fmtINR, fmtPct, fmtCr } from '../../engine/format';
 import { monthLabel } from '../../engine/utils';
 
-export function Recon({ a, inp, themeKey }: PageCtx) {
+export function Recon({ a, inp, themeKey, exporting }: PageCtx) {
   const r = a.recon;
   const o = r.overlap;
   return (
@@ -78,7 +78,7 @@ export function Recon({ a, inp, themeKey }: PageCtx) {
         { key: 'status', label: 'Status', render: (x) => <Chip s={x.status} tone={x.status === 'Matched' ? 'good' : x.status === 'Partially matched' ? 'warn' : 'serious'} /> },
       ]} />
       <div className="card-title" style={{ margin: '12px 0 6px' }}>Large banking credits from parties not found among GST buyers</div>
-      <Table rows={r.buyers.unmatchedBankCredits.slice(0, 15)} cols={[{ key: 'party', label: 'Bank party', wrap: true }, { key: 'amount', label: 'Credits', num: true, render: (x) => fmtINR(x.amount) }]} />
+      <Table rows={(exporting ? r.buyers.unmatchedBankCredits : r.buyers.unmatchedBankCredits.slice(0, 15))} cols={[{ key: 'party', label: 'Bank party', wrap: true }, { key: 'amount', label: 'Credits', num: true, render: (x) => fmtINR(x.amount) }]} />
 
       <Section num="28" title="Supplier vs banking reconciliation" />
       <Table rows={r.suppliers.rows} maxHeight={420} initialSort={{ key: 'gstAmount', dir: -1 }} cols={[
@@ -90,7 +90,7 @@ export function Recon({ a, inp, themeKey }: PageCtx) {
         { key: 'status', label: 'Status', render: (x) => <Chip s={x.status} tone={x.status === 'Matched' ? 'good' : x.status === 'Partially matched' ? 'warn' : 'serious'} /> },
       ]} />
       <div className="card-title" style={{ margin: '12px 0 6px' }}>Large payments to parties not found among GST suppliers</div>
-      <Table rows={r.suppliers.unmatchedBankDebits.slice(0, 15)} cols={[{ key: 'party', label: 'Bank party', wrap: true }, { key: 'amount', label: 'Payments', num: true, render: (x) => fmtINR(x.amount) }]} />
+      <Table rows={(exporting ? r.suppliers.unmatchedBankDebits : r.suppliers.unmatchedBankDebits.slice(0, 15))} cols={[{ key: 'party', label: 'Bank party', wrap: true }, { key: 'amount', label: 'Payments', num: true, render: (x) => fmtINR(x.amount) }]} />
       <Disclaimer />
     </>
   );

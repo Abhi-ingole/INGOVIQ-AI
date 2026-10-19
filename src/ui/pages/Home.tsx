@@ -1,15 +1,22 @@
 import logoFull from '../../assets/logo-full.png';
 import { useRef, useState } from 'react';
 import type { FileKind } from '../../engine/workbook';
+import type { DocEntry } from '../../engine/types';
+import { type Incoming, ACCEPT, fromDrop } from '../fileIntake';
 
 export interface LoadedFile { name: string; size: number; kind: FileKind; handle?: FileSystemFileHandle; lastModified: number }
 
-export function Home({ files, onFiles, onDropItems, onPick, onClearFile, onSetKind, supportsLive, onOpenDashboard, hasData, onReconnect, needReconnect }: {
-  files: LoadedFile[]; onFiles: (f: File[]) => void; onDropItems: (x: { file: File; handle?: FileSystemFileHandle }[]) => void; onPick: () => void; onClearFile: (name: string) => void; onSetKind: (name: string, k: FileKind) => void;
+export function Home({ files, onFiles, onDropItems, onPick, onPickFolder, onClearFile, onSetKind, supportsLive, onOpenDashboard, hasData, onReconnect, needReconnect, progress, docs, passwords, onPasswords }: {
+  files: LoadedFile[]; onFiles: (f: File[]) => void; onDropItems: (x: Incoming[], isFolder: boolean) => void; onPick: () => void; onPickFolder: () => void; onClearFile: (name: string) => void; onSetKind: (name: string, k: FileKind) => void;
   supportsLive: boolean; onOpenDashboard: () => void; hasData: boolean; onReconnect: () => void; needReconnect: boolean;
+  progress: string; docs: DocEntry[]; passwords: string[]; onPasswords: (p: string[]) => void;
 }) {
   const [over, setOver] = useState(false);
+  const [pw, setPw] = useState('');
+  const [showAll, setShowAll] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const needPw = docs.filter((d) => d.status === 'needs password');
+  const docOf = (name: string) => docs.find((d) => d.path === name);
   const kinds: Record<FileKind, string> = { financial: '📊 Financial statements', gst: '🧾 GST analysis', banking: '🏦 Banking analysis', unknown: '❓ Not recognised' };
   return (
     <div className="home">
@@ -25,39 +32,49 @@ export function Home({ files, onFiles, onDropItems, onPick, onClearFile, onSetKi
         onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
         onDrop={async (e) => {
           e.preventDefault(); setOver(false);
-          // collect synchronously — DataTransfer items expire after the event
-          const items = [...e.dataTransfer.items].filter((i) => i.kind === 'file').map((i) => ({
-            file: i.getAsFile(),
-            hp: (i as DataTransferItem & { getAsFileSystemHandle?: () => Promise<FileSystemHandle | null> }).getAsFileSystemHandle?.(),
-          }));
-          const out: { file: File; handle?: FileSystemFileHandle }[] = [];
-          for (const it of items) {
-            if (!it.file || !/\.(xlsx|xlsm|xls|csv)$/i.test(it.file.name)) continue;
-            const h = await it.hp?.catch(() => null);
-            out.push({ file: it.file, handle: h && h.kind === 'file' ? (h as FileSystemFileHandle) : undefined });
-          }
-          onDropItems(out);
+          const got = await fromDrop(e.dataTransfer);
+          onDropItems(got, got.some((g) => g.path.includes('/')) || got.some((g) => /\.zip$/i.test(g.path)));
         }}
         onClick={() => (supportsLive ? onPick() : input.current?.click())}>
         <div style={{ fontSize: 34 }}>📥</div>
-        <h2>Get data — drop your Excel files here</h2>
-        <div className="muted">Financial report · GST analysis report · Banking analysis report (or bank statement). Upload one, two or all three.</div>
-        <div style={{ marginTop: 12 }}><button className="btn primary">Choose Excel files</button></div>
+        <h2>Get data — drop a loan-file folder, a zip or individual files here</h2>
+        <div className="muted">Analysis reports (Financial · GST · Banking Excel) <b>or</b> the raw loan file: bank-statement PDFs, GSTR-3B PDFs, CIBIL / CMR, net-worth certificates, MCA data, Tally ledgers, ageing, loan obligation sheet, KYC. INGOVIQ reads every file and builds the full report.</div>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button className="btn primary" onClick={(e) => { e.stopPropagation(); onPickFolder(); }}>🗂 Upload folder</button>
+          <button className="btn primary" onClick={(e) => { e.stopPropagation(); input.current?.click(); }}>🗜 Upload zip / files</button>
+          {supportsLive && <button className="btn" onClick={(e) => { e.stopPropagation(); onPick(); }}>📂 Excel with live refresh</button>}
+        </div>
         <div className="small muted" style={{ marginTop: 10 }}>{supportsLive ? '🟢 Live mode available: files opened here are watched — save the Excel and the dashboard refreshes by itself.' : 'Tip: open in Chrome or Edge to enable Live mode (auto-refresh when the Excel file changes).'}</div>
-        <input ref={input} type="file" multiple accept=".xlsx,.xlsm,.xls,.csv" hidden onChange={(e) => e.target.files && onFiles([...e.target.files])} />
+        <input ref={input} type="file" multiple accept={ACCEPT} hidden onClick={(e) => e.stopPropagation()} onChange={(e) => { if (e.target.files) onFiles([...e.target.files]); e.target.value = ''; }} />
       </div>
+      {progress && <div className="note" style={{ marginTop: 12 }}><span className="live-dot" /> {progress}</div>}
+      {(needPw.length > 0 || passwords.length > 0) && (
+        <div className={`note ${needPw.length ? 'warn' : ''}`} style={{ marginTop: 12 }}>
+          <b>PDF passwords.</b> {needPw.length ? `${needPw.length} PDF(s) are password-protected: ${needPw.slice(0, 4).map((d) => d.path.split('/').pop()).join(', ')}${needPw.length > 4 ? '…' : ''}. ` : ''}
+          Passwords written in folder / file names (e.g. "pass-1234") are tried automatically. Add others here — they stay in this browser only.
+          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Password" style={{ padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6 }} onKeyDown={(e) => { if (e.key === 'Enter' && pw.trim()) { onPasswords([...new Set([...passwords, pw.trim()])]); setPw(''); } }} />
+            <button className="btn small primary" disabled={!pw.trim()} onClick={() => { onPasswords([...new Set([...passwords, pw.trim()])]); setPw(''); }}>Add & retry</button>
+            {passwords.map((p) => <span key={p} className="chip neutral">{'•'.repeat(Math.min(p.length, 8))} <button className="clear" onClick={() => onPasswords(passwords.filter((x) => x !== p))}>✕</button></span>)}
+          </div>
+        </div>
+      )}
       {needReconnect && <div className="note warn" style={{ marginTop: 12 }}>Your last files are remembered. <button className="btn small" onClick={onReconnect}>Reconnect files for live refresh</button></div>}
       {files.length > 0 && (
         <div className="filelist">
-          {files.map((f) => (
+          {docs.length > 0 && <div className="small muted">{docs.length} files read · {docs.filter((d) => d.status === 'used').length} used · {docs.filter((d) => d.status === 'scanned').length} scanned · {needPw.length} need password — full list on the <b>Loan File</b> page.</div>}
+          {(showAll ? files : files.slice(0, 12)).map((f) => (
             <div className="f" key={f.name}>
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b>{f.name}</b> <span className="small muted">{(f.size / 1024).toFixed(0)} KB {f.handle ? '· live' : ''}</span></span>
-              <select value={f.kind} onChange={(e) => onSetKind(f.name, e.target.value as FileKind)} title="Treat as…">
-                {(Object.keys(kinds) as FileKind[]).map((k) => <option key={k} value={k}>{kinds[k]}</option>)}
-              </select>
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.name}><b>{f.name.split('/').pop()}</b> <span className="small muted">{(f.size / 1024).toFixed(0)} KB {f.handle ? '· live' : ''} {f.name.includes('/') ? `· ${f.name.split('/').slice(0, -1).join(' / ')}` : ''}</span></span>
+              {/\.(xlsx|xlsm|xls|csv)$/i.test(f.name) && !docOf(f.name)?.type.match(/ledger|ageing|obligation|MOM|template/i) ? (
+                <select value={f.kind} onChange={(e) => onSetKind(f.name, e.target.value as FileKind)} title="Treat as…">
+                  {(Object.keys(kinds) as FileKind[]).map((k) => <option key={k} value={k}>{kinds[k]}</option>)}
+                </select>
+              ) : <span className="small">{docOf(f.name)?.type || (/\.zip$/i.test(f.name) ? 'Zip archive' : '')}</span>}
               <button className="btn small" onClick={() => onClearFile(f.name)}>Remove</button>
             </div>
           ))}
+          {files.length > 12 && <button className="btn small" onClick={() => setShowAll(!showAll)}>{showAll ? 'Show fewer' : `Show all ${files.length} files`}</button>}
           {hasData && <div><button className="btn primary" onClick={onOpenDashboard}>Open dashboard →</button></div>}
         </div>
       )}

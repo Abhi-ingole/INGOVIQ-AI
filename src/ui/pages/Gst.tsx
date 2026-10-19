@@ -1,23 +1,25 @@
-import { useState } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import type { PageCtx } from '../ctx';
 import { pickFYs } from '../ctx';
 import { ChartCard } from '../Chart';
-import { Section, Chip, Disclaimer, NoData, Kpi, Table, Arrow } from '../common';
+import { Section, Chip, Disclaimer, NoData, Kpi, Table, Arrow, ExportMode } from '../common';
 import { fmtCr, fmtINR, fmtPct, fmtX } from '../../engine/format';
 import { monthLabel } from '../../engine/utils';
 
 export function Gst({ a, fySel, themeKey }: PageCtx) {
   const g = a.gst;
   const [fyTab, setFyTab] = useState<string | null>(null);
+  const exporting = useContext(ExportMode);
   if (!g) return <><NoData what="GST analysis report" /><Disclaimer /></>;
   const fys = pickFYs(g.fys, fySel.filter((f) => g.fys.includes(f)));
   const fy = fyTab && g.fys.includes(fyTab) ? fyTab : fys[fys.length - 1] || g.fys[g.fys.length - 1];
   const monthsIn = (f: string) => g.monthly.filter((m) => m.fy === f && (m.revenue || m.purchase)).length;
-  const buyers = g.buyers[fy] || [];
-  const suppliers = g.suppliers[fy] || [];
-  const cb = g.concentration.buyers.find((c) => c.fy === fy);
-  const cs = g.concentration.suppliers.find((c) => c.fy === fy);
-  const st = g.states.find((s) => s.fy === fy);
+  const per = (fy: string) => ({
+    buyers: g.buyers[fy] || [], suppliers: g.suppliers[fy] || [],
+    cb: g.concentration.buyers.find((c) => c.fy === fy), cs: g.concentration.suppliers.find((c) => c.fy === fy), st: g.states.find((s) => s.fy === fy),
+  });
+  const { cb } = per(fy);
+  const eachFy = (render: (fy: string) => ReactNode) => (exporting ? g.fys : [fy]).map((f) => <div key={f} style={{ marginBottom: 12 }}>{exporting && <div className="card-title" style={{ margin: '6px 0' }}>{f}</div>}{render(f)}</div>);
   const monthly = g.monthly.filter((m) => fys.includes(m.fy));
   const ex = g.exports.find((e) => e.fy === fy);
   const fyTabs = <div style={{ display: 'flex', gap: 4 }}>{g.fys.map((f) => <button key={f} className={`btn small ${f === fy ? 'primary' : ''}`} onClick={() => setFyTab(f)}>{f}</button>)}</div>;
@@ -46,6 +48,7 @@ export function Gst({ a, fySel, themeKey }: PageCtx) {
       {g.unusualMonths.length > 0 && <div className="note warn"><b>Unusual movement between sales and purchases:</b> {g.unusualMonths.map((u) => `${monthLabel(u.month)} — ${u.note}`).join(' · ')}</div>}
 
       <Section num="6.1" title="Buyer analysis" right={fyTabs} />
+      {eachFy((fy) => { const { buyers, cb } = per(fy); return (<>
       <div className="grid g4" style={{ marginBottom: 10 }}>
         <Kpi label="Top 5 buyer concentration" value={fmtPct(cb?.top5)} />
         <Kpi label="Top 10 buyer concentration" value={fmtPct(cb?.top10)} />
@@ -64,7 +67,10 @@ export function Gst({ a, fySel, themeKey }: PageCtx) {
         <ChartCard title={`Top 10 buyers — ${fy}`} themeKey={themeKey} height={380} spec={{ categories: buyers.slice(0, 10).map((b) => b.name.slice(0, 28)), unit: 'inr', type: 'hbar', series: [{ name: 'Sales', data: buyers.slice(0, 10).map((b) => b.total) }] }} />
       </div>
 
+      </>); })}
+
       <Section num="7" title="Supplier analysis" right={fyTabs} />
+      {eachFy((fy) => { const { suppliers, cs } = per(fy); return (<>
       <div className="grid g4" style={{ marginBottom: 10 }}>
         <Kpi label="Top 5 supplier concentration" value={fmtPct(cs?.top5)} />
         <Kpi label="Top 10 supplier concentration" value={fmtPct(cs?.top10)} />
@@ -81,6 +87,8 @@ export function Gst({ a, fySel, themeKey }: PageCtx) {
         ]} />
         <ChartCard title={`Top 10 suppliers — ${fy}`} themeKey={themeKey} height={380} spec={{ categories: suppliers.slice(0, 10).map((b) => b.name.slice(0, 28)), unit: 'inr', type: 'hbar', series: [{ name: 'Purchases', data: suppliers.slice(0, 10).map((b) => b.total), slot: 1 }] }} />
       </div>
+
+      </>); })}
 
       <Section num="8" title="Sales-to-purchase ratio" />
       <div className="note small">Month-wise trend is charted in section 6. Annual: {g.salesPurchaseFY.map((r) => `${r.fy} ${fmtX(r.ratio)}`).join(' · ')}</div>
@@ -124,7 +132,7 @@ export function Gst({ a, fySel, themeKey }: PageCtx) {
             return { categories: periods.map(monthLabel), unit: 'num', type: 'bar', series: gstins.map((gs, i) => ({ name: `${gs.slice(0, 2)}-${rows.find((r) => r.gstin === gs)?.state || gs}`, data: periods.map((p) => rows.find((r) => r.gstin === gs && r.period === p)?.delayDays ?? null), slot: i })) };
           })()} />
       </div>
-      <details style={{ marginTop: 8 }}><summary className="small" style={{ cursor: 'pointer' }}>Show every filing (filing date vs due date)</summary>
+      <details style={{ marginTop: 8 }} open={exporting || undefined}><summary className="small" style={{ cursor: 'pointer' }}>Show every filing (filing date vs due date)</summary>
         <Table rows={g.filing.rows} maxHeight={360} cols={[
           { key: 'gstin', label: 'GSTIN', render: (r) => <span className="code">{r.gstin}</span>, sort: (r) => r.gstin }, { key: 'returnType', label: 'Return', sort: (r) => r.returnType },
           { key: 'period', label: 'Period', render: (r) => monthLabel(r.period), sort: (r) => r.period }, { key: 'due', label: 'Due date', sort: (r) => r.due }, { key: 'filed', label: 'Filed on', sort: (r) => r.filed },
@@ -133,6 +141,7 @@ export function Gst({ a, fySel, themeKey }: PageCtx) {
       </details>
 
       <Section num="11" title="State-wise / location-wise revenue" right={fyTabs} />
+      {eachFy((fy) => { const { st } = per(fy); return (<>
       <div className="grid g2">
         <Table rows={st?.rows || []} cols={[
           { key: 'state', label: 'State' }, { key: 'sales', label: 'Sales', num: true, render: (r) => fmtINR(r.sales) }, { key: 'salesPct', label: '% Revenue', num: true, render: (r) => fmtPct(r.salesPct) },
@@ -140,6 +149,8 @@ export function Gst({ a, fySel, themeKey }: PageCtx) {
         ]} />
         <ChartCard title={`Sales by state — ${fy}`} sub={`Geographical concentration: ${g.geoConcentration.find((x) => x.fy === fy)?.topState} ${fmtPct(g.geoConcentration.find((x) => x.fy === fy)?.share)}`} themeKey={themeKey} spec={{ categories: (st?.rows || []).map((r) => r.state), unit: 'inr', type: 'donut', allowed: ['donut', 'pie', 'hbar', 'table'], series: [{ name: 'Sales', data: (st?.rows || []).map((r) => r.sales) }] }} />
       </div>
+
+      </>); })}
 
       <Section num="12" title="Intra-group transactions" right={<Chip s={`Related-party dependency: ${g.relatedPartyDependency}`} tone={g.relatedPartyDependency === 'Low' ? 'good' : 'warn'} />} />
       <Table rows={g.intraGroup} cols={[{ key: 'fy', label: 'Financial year' }, { key: 'amount', label: 'Intra-group sales', num: true, render: (r) => fmtINR(r.amount) }, { key: 'pct', label: '% of business', num: true, render: (r) => fmtPct(r.pct) }]} />
