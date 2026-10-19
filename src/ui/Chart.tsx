@@ -185,13 +185,14 @@ export function Gauge({ value, label, height = 200, themeKey }: { value: number 
     const text = cssVar('--text');
     const v = value ?? 0;
     return {
+      animation: false,
       series: [{
         type: 'gauge', startAngle: 200, endAngle: -20, min: 0, max: 100, radius: '95%', center: ['50%', '62%'],
         progress: { show: true, width: 14, itemStyle: { color: v >= 75 ? cssVar('--good') : v >= 60 ? cssVar('--warn') : v >= 45 ? cssVar('--serious') : cssVar('--critical') } },
         axisLine: { lineStyle: { width: 14, color: [[1, cssVar('--grid')]] } },
         axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false }, pointer: { show: false },
         title: { offsetCenter: [0, '38%'], color: cssVar('--text-2'), fontSize: 12 },
-        detail: { valueAnimation: true, offsetCenter: [0, '0%'], fontSize: 30, fontWeight: 700, color: text, formatter: value === null ? '—' : '{value}' },
+        detail: { valueAnimation: false, offsetCenter: [0, '0%'], fontSize: 30, fontWeight: 700, color: text, formatter: value === null ? '—' : '{value}' },
         data: [{ value: value ?? 0, name: label }],
       }],
     };

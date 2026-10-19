@@ -9,3 +9,4 @@ samples/
 *.xlsm
 *.csv
 *.pdf
+dist-standalone/

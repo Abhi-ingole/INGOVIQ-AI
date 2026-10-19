@@ -30,7 +30,7 @@ Drop three Excel reports — **Financial statements**, **GST analysis** and **Ba
 | DAX-style measures | `DIVIDE`, `IF`, `YOY`, `PREVIOUSYEAR`, `MIN`, `MAX`, `ROUND`… on all financial fields |
 | Live data | In Chrome / Edge, opened files are watched — save the Excel and the dashboard refreshes |
 | Overrides | Correct any financial value or bank-party classification; everything recalculates |
-| Export | Full **PDF credit report** (disclaimer on every page), **Excel** workbook of all tables, PNG of any page |
+| Export | **Interactive HTML** (one offline file with the full dashboard + data), full **PDF credit report** (disclaimer on every page), **Excel** workbook of all tables, PNG of any page |
 | Private | Runs entirely in the browser. Files never leave the computer. |
 | Light / dark | Theme toggle |
 

@@ -24,7 +24,10 @@
    - **Ageing & Bureau page:** debtor / creditor ageing, CIBIL, CMR.
    - **Banking → section 22:** party classification badal (Business / Internal / Promoter / Loan…).
 10. **Live data:** files *Get data* ne Chrome/Edge madhe open kelya (kiva drag-drop kelya) ki **Live 🟢** on hote. Excel save kela ki 3 second madhe dashboard update. Page reload kelyavar "Reconnect files" dabav.
-11. **Download:** ribbon madhe **PDF report** (purna credit report, pratyek page var disclaimer), **Excel** (sagle tables), **PNG page**.
+11. **Download:** ribbon madhe
+    - **🌐 HTML** — ekach `.html` file madhe purna dashboard + data. Internet nastana pan kontyahi browser madhe open hote. Sagle pages, filters, chart badalne, PDF/Excel export tyatun pan chalte. Email / WhatsApp var pathavta yete.
+    - **PDF report** (purna credit report, pratyek page var disclaimer), **Excel** (sagle tables), **PNG page**.
+    - Downloaded HTML madhe navin Excel data pahije tar **Get data / Refresh** dabav ani updated files nivad (Chrome/Edge madhe Live pan on hote). Mag tithunach parat **🌐 HTML** download kar — navin data sahit.
 12. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
 
 ## Part 3 · Accuracy kashi check karaychi

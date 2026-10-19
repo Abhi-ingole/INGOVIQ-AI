@@ -18,6 +18,9 @@ import { Home, Guide, type LoadedFile } from './ui/pages/Home';
 import { idbGet, idbSet, lsGet, lsGetArr, lsSet } from './ui/store';
 import { exportExcel, exportPdf, exportPng } from './ui/exporters';
 import { ExportMode } from './ui/common';
+import logoFull from './assets/logo-full.png';
+import logoIcon from './assets/logo-icon.png';
+import { exportHtml, readEmbedded, b64ToBuffer, type EmbeddedSnapshot } from './ui/htmlExport';
 
 interface StoredFile extends LoadedFile { buffer: ArrayBuffer }
 type View = 'home' | 'report' | 'data' | 'model' | 'settings' | 'guide';
@@ -56,6 +59,7 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [needReconnect, setNeedReconnect] = useState(false);
+  const [snapshot, setSnapshot] = useState<EmbeddedSnapshot | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -78,8 +82,19 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem('ingoviq.theme', theme); } catch { /* storage blocked */ } }, [theme]);
   const themeKey = `${effTheme}-${exporting ? 'x' : ''}`;
 
-  // restore last session's files
+  // restore: data embedded in an exported HTML wins, else the last session in this browser
   useEffect(() => {
+    const emb = readEmbedded();
+    if (emb) {
+      setSnapshot(emb);
+      setFiles(emb.files.map((f) => ({ name: f.name, size: f.size, kind: f.kind, lastModified: f.lastModified, buffer: b64ToBuffer(f.b64) })));
+      setInpState({ ...DEFAULT_INPUTS, ...emb.inputs });
+      setVisualsState(emb.visuals || []);
+      setMeasuresState(emb.measures || []);
+      setView('report');
+      setLastRefresh(new Date(emb.createdAt));
+      return;
+    }
     idbGet<StoredFile[]>('files').then(async (saved) => {
       if (!saved?.length) return;
       setFiles(saved);
@@ -111,6 +126,7 @@ export default function App() {
       return next;
     });
     setBusy('');
+    setSnapshot(null);
     setLastRefresh(new Date());
     say(`Loaded ${added.map((a) => `${a.name} (${a.kind})`).join(', ')}`);
   }, [say]);
@@ -209,6 +225,15 @@ export default function App() {
     setBusy('');
   };
 
+  const doHtml = async () => {
+    setBusy('Building interactive HTML…');
+    try {
+      const size = await exportHtml(files, a.company, inp, visuals, measures);
+      say(`Interactive HTML downloaded (${(size / 1048576).toFixed(1)} MB) — open it in any browser, works offline`);
+    } catch (e) { say(`HTML export failed: ${(e as Error).message}`); }
+    setBusy('');
+  };
+
   const clearAll = () => {
     if (!confirm('Remove all loaded files from this browser?')) return;
     setFiles([]); persist([]); setView('home'); setFySel([]);
@@ -220,8 +245,8 @@ export default function App() {
   return (
     <div className="app">
       <div className="titlebar">
-        <div className="brand"><img src="./logo-icon.png" alt="" />INGOVIQ <span className="ai">AI</span></div>
-        <div className="doc">{hasData ? `${a.company}` : 'Untitled'} {lastRefresh && <span>· refreshed {lastRefresh.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}</div>
+        <div className="brand"><img src={logoIcon} alt="" />INGOVIQ <span className="ai">AI</span></div>
+        <div className="doc">{hasData ? `${a.company}` : 'Untitled'} {snapshot && <span className="chip warn" style={{ margin: '0 6px' }} title="Data is embedded in this HTML file. Use Get data / Refresh to load newer Excel files.">Offline snapshot</span>}{lastRefresh && <span>· {snapshot ? 'data as of' : 'refreshed'} {lastRefresh.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}</div>
         {liveCapable && live && !needReconnect && <span className="small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="live-dot" /> Live</span>}
         <button className="tb-btn" onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light')} title="Theme">{theme === 'light' ? '☀ Light' : theme === 'dark' ? '☾ Dark' : '◐ Auto'}</button>
       </div>
@@ -242,6 +267,7 @@ export default function App() {
         <div className="group">
           <button className="rb" disabled={!hasData} onClick={doPdf}><span className="ic">📄</span>PDF report</button>
           <button className="rb" disabled={!hasData} onClick={() => exportExcel(a, ds, measures)}><span className="ic">📗</span>Excel</button>
+          <button className="rb" disabled={!hasData} title="One offline HTML file with the full interactive dashboard and data" onClick={doHtml}><span className="ic">🌐</span>HTML</button>
           <button className="rb" disabled={!hasData || view === 'home'} onClick={() => pageRef.current && exportPng(pageRef.current, `${a.company}_${view === 'report' ? page : view}`)}><span className="ic">🖼</span>PNG page</button>
         </div>
         <div className="group">
@@ -329,7 +355,7 @@ export default function App() {
         <ExportMode.Provider value={true}><div className="export-root" ref={exportRef}>
           <div className="page export-sec" data-title="Cover">
             <div style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '30px 10px' }}>
-              <img src="./logo-full.png" alt="" style={{ width: 420 }} />
+              <img src={logoFull} alt="" style={{ width: 420 }} />
               <div><h1 style={{ margin: 0 }}>Integrated Financial, GST, Banking & Credit Analysis Report</h1><h2 style={{ margin: '8px 0', fontWeight: 500 }}>{a.company}</h2>
                 <div className="muted">Generated {new Date().toLocaleString('en-IN')} · Overall AI credit score {a.risk.overall.score ?? '—'}/100 · {a.risk.decision.decision}</div></div>
             </div>

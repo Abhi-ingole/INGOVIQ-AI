@@ -1,3 +1,4 @@
+import logoFull from '../../assets/logo-full.png';
 import { useRef, useState } from 'react';
 import type { FileKind } from '../../engine/workbook';
 
@@ -13,7 +14,7 @@ export function Home({ files, onFiles, onDropItems, onPick, onClearFile, onSetKi
   return (
     <div className="home">
       <div className="hero">
-        <img src="./logo-full.png" alt="INGOVIQ AI" />
+        <img src={logoFull} alt="INGOVIQ AI" />
         <div>
           <div className="tag">Intelligence in Every Insight.</div>
           <div className="muted">AI-Powered Business Intelligence Platform — credit, financial, GST & banking analysis</div>
