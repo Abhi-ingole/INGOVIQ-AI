@@ -82,9 +82,32 @@ function visual(type: string, x: number, y: number, w: number, h: number, proj: 
       vcObjects: { title: [{ properties: { show: { expr: { Literal: { Value: 'true' } } }, text: { expr: { Literal: { Value: `'${title.replace(/'/g, "''")}'` } } } } }] },
     },
   };
-  return { x, y, z: vid, width: w, height: h, config: JSON.stringify(config), filters: '[]' };
+  return { legacy: { x, y, z: vid, width: w, height: h, config: JSON.stringify(config), filters: '[]' }, spec: { name, type, x, y, z: vid, w, h, proj, title } };
 }
-const section = (name: string, i: number, visuals: ReturnType<typeof visual>[]) => ({ name: `ReportSection${i}`, displayName: name, displayOption: 1, ordinal: i, width: 1280, height: 720, config: '{}', filters: '[]', visualContainers: visuals });
+type Vis = ReturnType<typeof visual>;
+const section = (name: string, i: number, visuals: Vis[]) => ({ name: `ReportSection${i}`, displayName: name, visuals });
+
+/* PBIR (definition folder) serialisation — the current Power BI Desktop report format */
+const SCHEMA = 'https://developer.microsoft.com/json-schemas/fabric/item/report/definition';
+function pbirField(f: Field) {
+  const col = { Expression: { SourceRef: { Entity: f.t } }, Property: f.c };
+  return f.measure ? { Measure: col } : f.agg ? { Aggregation: { Expression: { Column: col }, Function: 0 } } : { Column: col };
+}
+function pbirVisual(v: Vis['spec'], i: number) {
+  return {
+    $schema: `${SCHEMA}/visualContainer/1.0.0/schema.json`,
+    name: v.name,
+    position: { x: v.x, y: v.y, z: v.z * 1000, height: v.h, width: v.w, tabOrder: i * 1000 },
+    visual: {
+      visualType: v.type,
+      query: { queryState: Object.fromEntries(Object.entries(v.proj).map(([role, fs]) => [role, { projections: fs.map((f, k) => ({ field: pbirField(f), queryRef: qref(f), nativeQueryRef: f.agg ? `Sum of ${f.c}` : f.c, ...(k === 0 && role === 'Category' ? { active: true } : {}) })) }])) },
+      drillFilterOtherVisuals: true,
+      visualContainerObjects: { title: [{ properties: { show: { expr: { Literal: { Value: 'true' } } }, text: { expr: { Literal: { Value: `'${v.title.replace(/'/g, "''")}'` } } } } }] },
+    },
+  };
+}
+const THEME_NAME = 'CY24SU10';
+const THEME = { name: THEME_NAME, dataColors: ['#2A6FDB', '#E8743B', '#19A979', '#945ECF', '#13A4B4', '#D64550', '#6C8893', '#EE9E64'], background: '#FFFFFF', foreground: '#252423', tableAccent: '#2A6FDB', textClasses: { title: { fontFace: 'Segoe UI Semibold', fontSize: 12, color: '#252423' } } };
 
 export function buildPowerBiProject(a: Analysis, ds: Dataset): { blob: Blob; fileName: string; tables: number; rows: number } {
   vid = 0;
@@ -164,19 +187,36 @@ export function buildPowerBiProject(a: Analysis, ds: Dataset): { blob: Blob; fil
   ]));
   pages.push(section('Evidence', pages.length, [visual('tableEx', 20, 20, 1240, 680, { Values: [F('Evidence', 'ID'), F('Evidence', 'File'), F('Evidence', 'Document Type'), F('Evidence', 'What Was Read')] }, 'Evidence register')]));
 
-  const report = { config: JSON.stringify({ version: '5.43', activeSectionIndex: 0, defaultDrillFilterOtherVisuals: true, linguisticSchemaSyncVersion: 0 }), layoutOptimization: 0, sections: pages, publicCustomVisuals: [], resourcePackages: [] };
+  const legacyReport = {
+    config: JSON.stringify({ version: '5.59', themeCollection: { baseTheme: { name: THEME_NAME, version: '5.59', type: 2 } }, activeSectionIndex: 0, defaultDrillFilterOtherVisuals: true, linguisticSchemaSyncVersion: 0, objects: {} }),
+    layoutOptimization: 0,
+    resourcePackages: [{ resourcePackage: { disabled: false, items: [{ name: THEME_NAME, path: `BaseThemes/${THEME_NAME}.json`, type: 202 }], name: 'SharedResources', type: 2 } }],
+    sections: pages.map((p, i) => ({ config: '{}', displayName: p.displayName, displayOption: 1, filters: '[]', height: 720, name: p.name, ordinal: i, visualContainers: p.visuals.map((v) => v.legacy), width: 1280 })),
+  };
 
   const base = `INGOVIQ_${a.company.replace(/[^\w]+/g, '_').slice(0, 30)}`;
+  const j = (o: unknown) => strToU8(JSON.stringify(o, null, 2));
+  const R = `${base}/${base}.Report`, L = `${base}/${base} (classic).Report`;
   const files: Record<string, Uint8Array> = {
-    [`${base}/${base}.pbip`]: strToU8(JSON.stringify({ $schema: 'https://developer.microsoft.com/json-schemas/fabric/pbip/pbipProperties/1.0.0/schema.json', version: '1.0', artifacts: [{ report: { path: `${base}.Report` } }], settings: { enableAutoRecovery: true } }, null, 2)),
-    [`${base}/${base}.Report/definition.pbir`]: strToU8(JSON.stringify({ version: '1.0', datasetReference: { byPath: { path: `../${base}.SemanticModel` }, byConnection: null } }, null, 2)),
-    [`${base}/${base}.Report/report.json`]: strToU8(JSON.stringify(report, null, 2)),
-    [`${base}/${base}.SemanticModel/definition.pbism`]: strToU8(JSON.stringify({ version: '1.0', settings: {} }, null, 2)),
-    [`${base}/${base}.SemanticModel/model.bim`]: strToU8(JSON.stringify(modelBim(tables, rels), null, 2)),
+    // main project: PBIR report format (Power BI Desktop 2024+)
+    [`${base}/${base}.pbip`]: j({ $schema: 'https://developer.microsoft.com/json-schemas/fabric/pbip/pbipProperties/1.0.0/schema.json', version: '1.0', artifacts: [{ report: { path: `${base}.Report` } }], settings: { enableAutoRecovery: true } }),
+    [`${R}/definition.pbir`]: j({ $schema: 'https://developer.microsoft.com/json-schemas/fabric/item/report/definitionProperties/1.0.0/schema.json', version: '4.0', datasetReference: { byPath: { path: `../${base}.SemanticModel` } } }),
+    [`${R}/definition/version.json`]: j({ $schema: `${SCHEMA}/versionMetadata/1.0.0/schema.json`, version: '1.0.0' }),
+    [`${R}/definition/report.json`]: j({ $schema: `${SCHEMA}/report/1.0.0/schema.json`, themeCollection: { baseTheme: { name: THEME_NAME, reportVersionAtImport: '5.59', type: 'SharedResources' } }, layoutOptimization: 'None', resourcePackages: [{ name: 'SharedResources', type: 'SharedResources', items: [{ name: THEME_NAME, path: `BaseThemes/${THEME_NAME}.json`, type: 'BaseTheme' }] }], settings: { useStylableVisualContainerHeader: true, defaultDrillFilterOtherVisuals: true, allowChangeFilterTypes: true, useEnhancedTooltips: true } }),
+    [`${R}/definition/pages/pages.json`]: j({ $schema: `${SCHEMA}/pagesMetadata/1.0.0/schema.json`, pageOrder: pages.map((p) => p.name), activePageName: pages[0].name }),
+    [`${R}/StaticResources/SharedResources/BaseThemes/${THEME_NAME}.json`]: j(THEME),
+    // fallback project: classic report.json format (older Power BI Desktop)
+    [`${base}/${base} (classic).pbip`]: j({ $schema: 'https://developer.microsoft.com/json-schemas/fabric/pbip/pbipProperties/1.0.0/schema.json', version: '1.0', artifacts: [{ report: { path: `${base} (classic).Report` } }], settings: { enableAutoRecovery: true } }),
+    [`${L}/definition.pbir`]: j({ version: '1.0', datasetReference: { byPath: { path: `../${base}.SemanticModel` }, byConnection: null } }),
+    [`${L}/report.json`]: j(legacyReport),
+    [`${L}/StaticResources/SharedResources/BaseThemes/${THEME_NAME}.json`]: j(THEME),
+    [`${base}/${base}.SemanticModel/definition.pbism`]: j({ version: '1.0', settings: {} }),
+    [`${base}/${base}.SemanticModel/model.bim`]: j(modelBim(tables, rels)),
     [`${base}/README.txt`]: strToU8([
       `INGOVIQ AI — Power BI dashboard for ${a.company}`, '',
-      'How to open:', '1. Extract (unzip) this folder anywhere on a Windows PC with Power BI Desktop (2023 or newer).',
+      'How to open:', '1. Extract (unzip) this folder anywhere on a Windows PC with Power BI Desktop (right-click → Extract All; do not open from inside the zip).',
       `2. Double-click ${base}.pbip  (or Power BI Desktop → File → Open → ${base}.pbip).`,
+      `   If the pages are empty in your Power BI version, close it and open "${base} (classic).pbip" instead — same data, classic report format.`,
       '3. If Power BI asks, click "Refresh" / "Apply changes" once — the data is stored inside the model (no files or passwords needed).',
       '   Older Power BI versions: enable File → Options → Preview features → "Power BI Project (.pbip) save option" and restart.', '',
       `Pages: ${pages.map((p) => p.displayName).join(', ')}`,
@@ -185,6 +225,10 @@ export function buildPowerBiProject(a: Analysis, ds: Dataset): { blob: Blob; fil
       'Save as .pbix from Power BI Desktop (File → Save as) to share a single file.',
     ].join('\r\n')),
   };
+  for (const p of pages) {
+    files[`${R}/definition/pages/${p.name}/page.json`] = j({ $schema: `${SCHEMA}/page/1.0.0/schema.json`, name: p.name, displayName: p.displayName, displayOption: 'FitToPage', height: 720, width: 1280 });
+    p.visuals.forEach((v, i) => { files[`${R}/definition/pages/${p.name}/visuals/${v.spec.name}/visual.json`] = j(pbirVisual(v.spec, i)); });
+  }
   const zip = zipSync(files, { level: 6 });
   return { blob: new Blob([zip], { type: 'application/zip' }), fileName: `${base}_PowerBI.zip`, tables: tables.length, rows: tables.reduce((s, t) => s + t.rows.length, 0) };
 }
