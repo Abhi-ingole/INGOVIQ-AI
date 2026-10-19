@@ -39,7 +39,10 @@
 16. **Data sources tick box (Filters pane):** ekhada source untick kela (e.g. Banking) tar to sagla report madhun vagalla jato; parat tick kela ki parat yeto. Financial year tick kela ki Overview, GST ani Banking charts tya varshapurte filter hotat.
 17. **📑 Credit report (PDF):** ribbon madhla **Credit report** button "Integrated Financial, GST, Banking & Credit Analysis Report" format (sections 1–40) madhe 50–70 pages cha searchable PDF banavto — contents page, pratyek table sobat **Evidence** (konti file / page / sheet row madhun figure ala), Annexure madhe Evidence Register, GSTR-3B return-wise data, bank statement coverage, Tally ledgers, formulas ani material bank transactions (pratyek entry chi file ani page). **📄 Dashboard PDF** screen jasa disto tasa PDF deto.
 18. **Disclaimer:** PDF madhe Disclaimer / Declaration by default nasto. Pahije asel tar **Settings → PDF downloads** madhe tick kar.
-19. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
+19. **🤖 Ask INGOVIQ (AI assistant):** khali ujvya kopryatla button. English / Hinglish / Marathi madhe prashna vichar — e.g. "Top 5 buyers FY 2025-26", "GST filing late hai kya?", "kiti loan milel?", "May 2026 sales", party che nav. Uttar fakt upload kelelya data madhun yete, sobat source (E-number / file) disto; data nasel tar te sangto — andaja ne uttar det nahi. API key lagat nahi.
+20. **SWOT page:** files upload kelyavar SWOT automatic tayar hoto. Pratyek point sobat ratio / value / benchmark, data source (E-number) ani report section; Weakness ani Threat la severity (Low / Medium / High) ani 💡 AI recommendation. Severity filter. **⤓ SWOT PDF** ani **⤓ SWOT Excel** download.
+21. **📊 Power BI:** ribbon madhla button Power BI Project (.pbip) zip deto — reconciled data model madhech asto. Zip extract kar ani `.pbip` file double-click kar → Power BI Desktop madhe ready dashboard ughadto (Overview, Financials, GST, Banking, Reconciliation, Risk & SWOT, Evidence). Juna Power BI asel tar File → Options → Preview features → "Power BI Project (.pbip)" on kar.
+22. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
 
 ## Part 3 · Accuracy kashi check karaychi
 

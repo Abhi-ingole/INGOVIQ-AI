@@ -1,4 +1,5 @@
 import type { PageCtx } from '../ctx';
+import { SwotView } from './Swot';
 import { ChartCard, Gauge, Radar } from '../Chart';
 import { Section, Chip, Disclaimer, Table, Kpi } from '../common';
 import { fmtINR, fmtPct, fmtCr } from '../../engine/format';
@@ -57,7 +58,8 @@ export function AgeingBureau({ a, inp, setInp, themeKey }: PageCtx) {
   );
 }
 
-export function RiskSwot({ a, themeKey }: PageCtx) {
+export function RiskSwot(ctx: PageCtx) {
+  const { a, themeKey } = ctx;
   const risk = a.risk;
   const groups: ('Financial' | 'GST' | 'Banking' | 'Reconciliation' | 'Bureau')[] = ['Financial', 'GST', 'Banking', 'Reconciliation', 'Bureau'];
   const sec: Record<string, string> = { Financial: '31', GST: '32', Banking: '33', Reconciliation: '33', Bureau: '33' };
@@ -80,13 +82,8 @@ export function RiskSwot({ a, themeKey }: PageCtx) {
         );
       })}
 
-      <Section num="34" title="AI SWOT analysis" />
-      <div className="swot">
-        <div><h4 className="up">Strengths</h4><ul className="clean">{risk.swot.strengths.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
-        <div><h4 className="down">Weaknesses</h4><ul className="clean">{risk.swot.weaknesses.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
-        <div><h4 style={{ color: 'var(--brand-600)' }}>Opportunities</h4><ul className="clean">{risk.swot.opportunities.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
-        <div><h4 style={{ color: 'var(--serious-ink)' }}>Threats</h4><ul className="clean">{risk.swot.threats.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
-      </div>
+      <Section num="34" title="AI SWOT analysis (evidence-based)" />
+      <SwotView {...ctx} compact />
 
       <Section num="35" title="Integrated AI credit scorecard" />
       <div className="grid g3">

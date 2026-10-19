@@ -71,6 +71,12 @@ SAMPLES=/path/to/excel/folder npm test
   - KYC, images, scanned PDFs and other documents are listed in the **Loan File** page inventory with their status (used / scanned / needs password / duplicate).
   - Scanned audited statements cannot be read as text: add the years in **Data view → Financial line items** and type the figures, or download the **financial input template**, fill it and upload it.
 
+**Ask INGOVIQ:** a built-in assistant (no API key) that answers questions about the loaded report — in English, Hinglish or Marathi — from the analysed data only, with the evidence for each answer.
+
+**Evidence-based SWOT:** generated automatically; every point carries its metric, value, benchmark, source documents and report section; weaknesses and threats get a severity (Low / Medium / High) and a recommendation. Download as PDF or Excel.
+
+**Power BI:** *Power BI* in the ribbon downloads a Power BI Project (.pbip) with the reconciled data embedded in the model and a ready dashboard; unzip and open the .pbip in Power BI Desktop.
+
 **Show / hide:** ribbon → *Show / hide* puts tick boxes on page tabs, section titles and visuals. Unticked items disappear from the dashboard, the PDF report, the Excel export (pages) and the HTML export.
 
 **Full exports:** the PDF contains every row of every table and every financial year separately (page breaks fall between rows); the Excel workbook adds the loan-file sheets (documents, GSTR-3B, loans, bureau, ageing, Tally parties).

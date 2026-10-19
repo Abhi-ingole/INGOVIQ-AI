@@ -4,6 +4,7 @@ import { analyseGst, type GstAnalysis } from './calcGst';
 import { analyseBanking, type BankAnalysis } from './calcBanking';
 import { reconcile, type ReconAnalysis } from './reconcile';
 import { assessRisk, type RiskAnalysis } from './risk';
+import { buildSwot, type SwotResult } from './swot';
 
 export interface Analysis {
   company: string;
@@ -12,6 +13,7 @@ export interface Analysis {
   bank: BankAnalysis | null;
   recon: ReconAnalysis;
   risk: RiskAnalysis;
+  swot: SwotResult;
   generatedAt: string;
 }
 
@@ -24,7 +26,8 @@ export function analyse(ds0: Dataset, inp: ManualInputs): Analysis {
   const recon = reconcile(ds.financial, fin, ds.gst, gst, bank, inp);
   const risk = assessRisk(ds.financial, fin, ds.gst, gst, bank, recon, inp);
   const company = ds.financial?.company || ds.gst?.company.replace(/\s*\(.*\)$/, '') || ds.banking?.company || 'Company';
-  return { company, fin, gst, bank, recon, risk, generatedAt: new Date().toISOString() };
+  const base = { company, fin, gst, bank, recon, risk, generatedAt: new Date().toISOString() };
+  return { ...base, swot: buildSwot({ ...base, swot: { items: [], counts: { Strength: 0, Weakness: 0, Opportunity: 0, Threat: 0 }, highRisks: 0, generatedFrom: [] } }, ds, inp) };
 }
 
 /** Apply user choices that change the data itself: hand-typed financial years (scanned statements)

@@ -52,7 +52,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
   const evidOf = (re: RegExp) => evid.filter((e) => re.test(e.type)).map((e) => e.id);
   const docs: DocEntry[] = ds.docs?.length ? ds.docs : ds.files.map((f) => ({ path: f.name, size: f.size, type: f.kind === 'financial' ? 'Financial analysis report' : f.kind === 'gst' ? 'GST analysis report' : f.kind === 'banking' ? 'Banking analysis report' : 'Other document', status: f.kind === 'unknown' ? 'not used' : 'used', note: '' }));
   docs.filter((d) => d.status === 'used').forEach((d, i) => evid.push({ id: `E${i + 1}`, file: d.path, type: d.type, used: d.note }));
-  const E = (re: RegExp, fallback = 'calculated') => { const ids = evidOf(re); return ids.length ? (ids.length > 4 ? `${ids[0]}–${ids[ids.length - 1]}` : ids.join(', ')) : fallback; };
+  const E = (re: RegExp, fallback = 'calculated') => { const ids = evidOf(re); if (!ids.length) return fallback; const n = ids.map((x) => +x.slice(1)); const parts: string[] = []; for (let i = 0; i < n.length;) { let j = i; while (j + 1 < n.length && n[j + 1] === n[j] + 1) j++; parts.push(j - i >= 2 ? `E${n[i]}–E${n[j]}` : n.slice(i, j + 1).map((k) => `E${k}`).join(', ')); i = j + 1; } return parts.join(', '); };
   const evFin = E(/financial|template/i, 'Data view (typed)');
   const evGst = E(/gst|gstr|tally/i);
   const evBank = E(/bank/i);
@@ -169,7 +169,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
   doc.text('Every figure is traceable: see the Evidence column and the Evidence Register (Annexure A).', M, H - 25);
 
   // contents page (filled at the end)
-  newPage(); const tocPage = doc.getNumberOfPages();
+  newPage(); const tocPage = doc.getNumberOfPages(); y = H; // contents page stays reserved
 
   /* ================= 1–2 ================= */
   part('COMPANY SNAPSHOT & EXECUTIVE SUMMARY');
@@ -201,7 +201,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
     if (scanned.length) table(['Financial document received', 'Status'], scanned.map((d) => [shortName(d.path), 'Scanned image — no text layer']), { widths: { 1: 50 } });
   } else {
     const fys = fin.fys;
-    section('3', 'Three-Year Financial Performance', `${evFin} — statement rows mapped in Annexure F; formulas in Annexure G`);
+    section('3', 'Three-Year Financial Performance', `${evFin} — source row of every line item shown below; formulas in Annexure G`);
     table(['Financial Parameter', ...fys, `YoY ${fys[fys.length - 1] || ''}`, '3-Year Trend'], metricRows(fin.performance, fys), { numCols: fys.map((_, i) => i + 1).concat(fys.length + 1) });
     await chart({ categories: fys, unit: 'inr', series: ['revenue', 'ebitda', 'pat'].map((k, i) => { const m = fin.performance.find((p) => p.key === k)!; return { name: m.name, data: fys.map((f) => m.values[f] ?? null), slot: i }; }) }, 'bar', 'Revenue, EBITDA & PAT');
     sub('Each financial year presented separately');
@@ -276,7 +276,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
   say('Writing Part C — banking…');
   part('PART C — BANKING ANALYSIS');
   if (!bank) { section('14–25', 'Banking analysis', 'not provided'); para('No bank statements or banking analysis report were uploaded.'); } else {
-    section('14', 'Banking Trend (monthly, all operative accounts)', `${evBank} — every transaction keeps its file and page reference (Annexure E)`);
+    section('14', 'Banking Trend (monthly, all operative accounts)', `${evBank} — every transaction keeps its file and page reference (Annexure H)`);
     table(['Month', 'Total Inflow', 'Total Outflow', 'Adjusted Inflow', 'Closing Balance', 'Credits', 'Debits'], bank.monthly.map((m) => [monthLabel(m.month), inr(m.inflow), inr(m.outflow), inr(m.adjustedInflow), inr(m.closing), String(m.credits), String(m.debits)]), { numCols: [1, 2, 3, 4, 5, 6] });
     para(`Banking trend: ${bank.totals.trend} (volatility of monthly inflow ${pct(bank.totals.volatility)}).`);
     await chart({ categories: bank.monthly.map((m) => monthLabel(m.month)), unit: 'inr', series: [{ name: 'Inflow', data: bank.monthly.map((m) => m.inflow) }, { name: 'Outflow', data: bank.monthly.map((m) => m.outflow), slot: 1 }, { name: 'Adjusted inflow', data: bank.monthly.map((m) => m.adjustedInflow), slot: 2 }] }, 'bar', 'Inflow, outflow and adjusted business inflow');
@@ -327,7 +327,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
     section('25', 'CC / OD Utilisation', `${evBank}; limit source per account`);
     table(['Account', 'Sanctioned limit', 'Limit source', 'Avg util.', 'Peak', 'Min', 'Days >90%', 'Overdrawn days', 'Classification'], bank.utilisation.map((u) => [u.account, inr(u.limit), u.limitSource, pct(u.avgUtil), pct(u.peakUtil), pct(u.minUtil), String(u.daysAbove90), String(u.overdrawnDays), u.classification]), { numCols: [1, 3, 4, 5, 6, 7] });
     if (!bank.utilisation.length) para('No CC / OD account identified in the statements (all accounts are current accounts) — utilisation is not applicable.');
-    if (bank.interest.length) { sub('Interest servicing'); table(['Month', 'Interest debited'], bank.interest.map((i) => [monthLabel(i.month), inr(i.amount)]), { numCols: [1] }); }
+    if (bank.interest.some((i) => i.amount)) { sub('Interest servicing'); table(['Month', 'Interest debited'], bank.interest.filter((i) => i.amount).map((i) => [monthLabel(i.month), inr(i.amount)]), { numCols: [1] }); }
   }
 
   /* ================= PART D ================= */
@@ -382,10 +382,13 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
   section('31', 'Financial Red Flags', evFin); const f1 = flagsOf('Financial'); f1.length ? bullets(f1) : para(fin ? 'No financial red flags identified.' : 'Not assessed — financial statements not available.');
   section('32', 'GST Red Flags', evGst); const f2 = flagsOf('GST'); f2.length ? bullets(f2) : para('No GST red flags identified.');
   section('33', 'Banking Red Flags', evBank); const f3 = [...flagsOf('Banking'), ...flagsOf('Reconciliation'), ...flagsOf('Bureau')]; f3.length ? bullets(f3) : para('No banking red flags identified.');
-  section('34', 'AI SWOT Analysis', 'derived from sections 3–33');
-  const sw = risk.swot;
-  table(['Strengths', 'Weaknesses'], Array.from({ length: Math.max(sw.strengths.length, sw.weaknesses.length, 1) }, (_, i) => [sw.strengths[i] || '', sw.weaknesses[i] || '']));
-  table(['Opportunities', 'Threats'], Array.from({ length: Math.max(sw.opportunities.length, sw.threats.length, 1) }, (_, i) => [sw.opportunities[i] || '', sw.threats[i] || '']));
+  section('34', 'AI SWOT Analysis', 'automatic, evidence-based — metric, value, benchmark and source for every point');
+  for (const t of ['Strength', 'Weakness', 'Opportunity', 'Threat'] as const) {
+    const rows = a.swot.items.filter((i) => i.type === t);
+    sub(`${t.toUpperCase()}S (${rows.length})`);
+    const risky = t === 'Weakness' || t === 'Threat';
+    table(['Observation', 'Evidence', ...(risky ? ['Severity', 'AI recommendation'] : ['Source'])], rows.map((r) => [`${r.title} — ${r.detail}`, `${r.metric}: ${r.value} (benchmark ${r.benchmark}) · ${r.source} · sec. ${r.section}`, ...(risky ? [r.severity, r.recommendation] : [r.recommendation || '—'])]), { widths: risky ? { 0: 58, 1: 50, 2: 16 } : { 0: 80, 1: 62 } });
+  }
   part('PART G — INTEGRATED AI CREDIT SCORE');
   section('35', 'Credit Scorecard', 'scoring bands shown in the Basis column');
   table(['Assessment', 'Score', 'Weight', 'Risk Classification', 'Basis'], risk.scores.map((s) => [s.name, s.score === null ? 'n/a' : `${s.score}/100`, `${s.weight}%`, s.classification, s.basis]), { numCols: [1, 2], widths: { 0: 40, 4: 70 } });
@@ -453,7 +456,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
       const pick = byAmt.slice(0, cap);
       const thr = pick.length < bank.txns.length ? pick[pick.length - 1].credit + pick[pick.length - 1].debit : 0;
       pick.sort((p, q) => p.date.localeCompare(q.date));
-      section('E', 'Bank transaction register — material entries', `${evBank}; file and page of each entry in the Evidence column`);
+      section('H', 'Bank transaction register — material entries', `${evBank}; file and page of each entry in the Evidence column`);
       para(pick.length < bank.txns.length ? `${pick.length.toLocaleString('en-IN')} largest of ${bank.txns.length.toLocaleString('en-IN')} transactions (every entry of ${inr(thr)} or more), in date order. The complete register is in the Excel export (Bank Transactions sheet).` : `All ${bank.txns.length.toLocaleString('en-IN')} transactions in date order.`, 8, GREY);
       table(['Date', 'Account', 'Party / narration', 'Debit', 'Credit', 'Balance', 'Class', 'Evidence'], pick.map((t) => [fmtDate(t.date), t.account.slice(-4), t.counterparty || t.description, t.debit ? inr(t.debit) : '', t.credit ? inr(t.credit) : '', inr(t.balance), t.cls, t.source || '']), { numCols: [3, 4, 5], styles: { fontSize: 6.4, cellPadding: 0.8, overflow: 'linebreak' } as UserOptions['styles'], widths: { 0: 14, 1: 10, 3: 19, 4: 19, 5: 21, 6: 20 } });
     }
@@ -462,14 +465,18 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
   /* ---------- contents ---------- */
   doc.setPage(tocPage);
   doc.setTextColor(...NAVY); doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.text('Contents', M, 22);
-  let ty = 30;
+  // one column when it fits, otherwise two
+  const lh = (e: { level: number }) => (e.level ? 4.1 : 5.4);
+  const need2 = toc.reduce((h, e) => h + lh(e), 0) > H - 48;
+  const colW = need2 ? (W - 2 * M - 8) / 2 : W - 2 * M;
+  let ty = 30, cx = M;
   for (const e of toc) {
-    if (ty > H - 18) break;
-    doc.setFont('helvetica', e.level ? 'normal' : 'bold'); doc.setFontSize(e.level ? 8.2 : 9); doc.setTextColor(e.level ? 40 : NAVY[0], e.level ? 40 : NAVY[1], e.level ? 40 : NAVY[2]);
-    const label = doc.splitTextToSize(T(e.label), W - 2 * M - 22)[0];
-    doc.text(label, M + (e.level ? 5 : 0), ty);
-    doc.text(String(e.page), W - M, ty, { align: 'right' });
-    ty += e.level ? 4.3 : 5.6;
+    if (ty + lh(e) > H - 18) { if (need2 && cx === M) { cx = M + colW + 8; ty = 30; } else break; }
+    doc.setFont('helvetica', e.level ? 'normal' : 'bold'); doc.setFontSize(e.level ? 7.8 : 8.6); doc.setTextColor(e.level ? 40 : NAVY[0], e.level ? 40 : NAVY[1], e.level ? 40 : NAVY[2]);
+    const label = doc.splitTextToSize(T(e.label), colW - 14 - (e.level ? 4 : 0))[0];
+    doc.text(label, cx + (e.level ? 4 : 0), ty);
+    doc.text(String(e.page), cx + colW, ty, { align: 'right' });
+    ty += lh(e);
   }
   footer();
   return doc;

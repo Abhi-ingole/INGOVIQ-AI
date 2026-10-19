@@ -5,6 +5,11 @@ import { buildDatasetFromFiles, autoInputs, mergeInputs, selectSources } from '.
 import { browserPdfLoader } from './ui/pdfLoader';
 import { type Incoming, ACCEPT, fromFileList, pickDirectory } from './ui/fileIntake';
 import { LoanFile } from './ui/pages/LoanFile';
+import { Swot } from './ui/pages/Swot';
+import { Assistant } from './ui/Assistant';
+import { buildPowerBiProject } from './ui/report/powerbi';
+import { swotPdf, swotExcel } from './ui/report/swotExport';
+import { buildEvidence } from './engine/evidence';
 import { PageGuard } from './ui/PageGuard';
 import { buildCreditReport } from './ui/report/creditReport';
 import { chartImage, toDataUrl } from './ui/report/chartImage';
@@ -23,14 +28,14 @@ import { Settings } from './ui/pages/Settings';
 import { Home, Guide, type LoadedFile } from './ui/pages/Home';
 import { idbGet, idbSet, lsGet, lsGetArr, lsSet } from './ui/store';
 import { exportExcel, exportPdf, exportPng } from './ui/exporters';
-import { ExportMode, HideCtx, HideBox, useSectionHiding, DisclaimerInExport, type HideState } from './ui/common';
+import { ExportMode, HideCtx, HideBox, useSectionHiding, DisclaimerInExport, DISCLAIMER, type HideState } from './ui/common';
 import logoFull from './assets/logo-full.png';
 import logoIcon from './assets/logo-icon.png';
 import { exportHtml, readEmbedded, b64ToBuffer, type EmbeddedSnapshot } from './ui/htmlExport';
 
 interface StoredFile extends LoadedFile { buffer: ArrayBuffer }
 type View = 'home' | 'report' | 'data' | 'model' | 'settings' | 'guide';
-const PAGES = ['Overview', 'Financials', 'Ratios', 'Working Capital', 'GST', 'Banking', 'Reconciliation', 'Ageing & Bureau', 'Risk & SWOT', 'Credit Decision', 'Loan File', 'My Visuals'] as const;
+const PAGES = ['Overview', 'Financials', 'Ratios', 'Working Capital', 'GST', 'Banking', 'Reconciliation', 'Ageing & Bureau', 'Risk & SWOT', 'SWOT', 'Credit Decision', 'Loan File', 'My Visuals'] as const;
 type Page = (typeof PAGES)[number];
 const PAGE_SUB: Record<Page, string> = {
   Overview: 'Sections 1–2 · Company & credit snapshot, executive AI credit summary',
@@ -43,6 +48,7 @@ const PAGE_SUB: Record<Page, string> = {
   'Ageing & Bureau': 'Part E · Sections 29–30 · Invoice ageing and CIBIL / CMR',
   'Risk & SWOT': 'Parts F–G · Sections 31–35 · Red flags, SWOT and integrated credit score',
   'Credit Decision': 'Part H · Sections 36–40 · Funding capacity, product mapping, recommendation, analyst remarks',
+  SWOT: 'Automatic SWOT — evidence, severity and recommendations · download as PDF / Excel',
   'Loan File': 'Every document received — inventory, statement coverage, GSTR-3B, loans, bureau, ageing, Tally ledgers',
   'My Visuals': 'Build your own visuals from the cleaned data and measures',
 };
@@ -278,6 +284,7 @@ export default function App() {
       case 'Risk & SWOT': return <RiskSwot {...c} />;
       case 'Credit Decision': return <Decision {...c} />;
       case 'Loan File': return <LoanFile {...c} />;
+      case 'SWOT': return <Swot {...c} />;
       case 'My Visuals': return <MyVisuals {...c} visuals={visuals} setVisuals={setVisuals} measures={measures} />;
     }
   };
@@ -307,6 +314,16 @@ export default function App() {
       say(`Credit analysis report downloaded (${pdf.getNumberOfPages()} pages)`);
     } catch (e) { say(`Report failed: ${(e as Error).message}`); console.error(e); }
     setBusy('');
+  };
+
+  const doPowerBi = () => {
+    try {
+      const r = buildPowerBiProject(a, ds);
+      const el = document.createElement('a');
+      el.href = URL.createObjectURL(r.blob); el.download = r.fileName; document.body.appendChild(el); el.click(); el.remove();
+      setTimeout(() => URL.revokeObjectURL(el.href), 10000);
+      say(`Power BI project downloaded (${r.tables} tables, ${r.rows.toLocaleString('en-IN')} rows) — unzip and double-click the .pbip file`);
+    } catch (e) { say(`Power BI export failed: ${(e as Error).message}`); }
   };
 
   const doHtml = async () => {
@@ -372,6 +389,7 @@ export default function App() {
           <button className="rb" disabled={!hasData} onClick={doReport} title="Credit Analysis Report (sections 1–40) — searchable PDF, 50–70 pages, every figure with its evidence"><span className="ic">📑</span>Credit report</button>
           <button className="rb" disabled={!hasData} onClick={() => doPdf()} title="Dashboard as it looks on screen — every visible page"><span className="ic">📄</span>Dashboard PDF</button>
           <button className="rb" disabled={!hasData} onClick={() => exportExcel(a, ds, measures, hidden)}><span className="ic">📗</span>Excel</button>
+          <button className="rb" disabled={!hasData} onClick={doPowerBi} title="Power BI Desktop project (.pbip) with the reconciled data and a ready dashboard — unzip and double-click"><span className="ic">📊</span>Power BI</button>
           <button className="rb" disabled={!hasData} title="One offline HTML file with the full interactive dashboard and data" onClick={doHtml}><span className="ic">🌐</span>HTML</button>
           <button className="rb" disabled={!hasData || view === 'home'} onClick={() => pageRef.current && exportPng(pageRef.current, `${a.company}_${view === 'report' ? page : view}`)}><span className="ic">🖼</span>PNG page</button>
         </div>
@@ -407,8 +425,8 @@ export default function App() {
                   <div className="page-head"><div><h1>{page}</h1><div className="sub">{PAGE_SUB[page]} · {a.company}</div></div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       {fySel.length > 0 && <span className="small">Filtered: {fySel.join(', ')} <button className="btn small" onClick={() => setFySel([])}>Clear filter</button></span>}
-                      <button className="btn small" title={`Download only the ${page} report as PDF`} onClick={() => doPdf(page)}>⤓ {page} PDF</button>
-                      <button className="btn small" title={`Download only the ${page} data as Excel`} onClick={() => exportExcel(a, ds, measures, hidden, page)}>⤓ {page} Excel</button>
+                      <button className="btn small" title={`Download only the ${page} report as PDF`} onClick={() => (page === 'SWOT' ? swotPdf(a.company, a.swot, buildEvidence(ds).items, !!effInp.pdfDisclaimer, DISCLAIMER) : doPdf(page))}>⤓ {page} PDF</button>
+                      <button className="btn small" title={`Download only the ${page} data as Excel`} onClick={() => (page === 'SWOT' ? swotExcel(a.company, a.swot, buildEvidence(ds).items) : exportExcel(a, ds, measures, hidden, page))}>⤓ {page} Excel</button>
                       <button className="btn small" title="Save this page as an image" onClick={() => pageRef.current && exportPng(pageRef.current, `${a.company}_${page}`)}>⤓ PNG</button>
                     </div></div>
                   {customize && (
@@ -481,6 +499,7 @@ export default function App() {
 
       <input ref={fileInput} type="file" multiple accept={ACCEPT} hidden onChange={(e) => { if (e.target.files) addFiles(fromFileList(e.target.files)); e.target.value = ''; }} />
       <input ref={folderInput} type="file" multiple hidden {...{ webkitdirectory: '', directory: '' }} onChange={(e) => { if (e.target.files) addFiles(fromFileList(e.target.files), true); e.target.value = ''; }} />
+      {hasData && !exporting && <Assistant a={a} ds={ds} inp={effInp} />}
       {(toast || busy || progress) && <div className="toast">{busy || progress || toast}</div>}
 
       {exportPages && (

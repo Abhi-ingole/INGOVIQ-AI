@@ -14,7 +14,7 @@ const SHEET_PAGES: Record<string, string[]> = {
   '3Y Performance': ['Financials'], 'Financials (cleaned)': ['Financials'], 'Custom Measures': ['Financials', 'My Visuals'], '21 Ratios': ['Ratios'], 'Working Capital': ['Working Capital'],
   'GST Monthly': ['GST'], 'GST Buyers': ['GST'], 'GST Suppliers': ['GST'], 'GST Concentration': ['GST'], 'GST Filing': ['GST'], 'GST States': ['GST'], 'GST Exports': ['GST'],
   'Bank Monthly': ['Banking'], 'Bank Adjusted Inflow': ['Banking'], 'Bank Parties': ['Banking'], 'Bank Transactions': ['Banking'], 'Loans & Utilisation': ['Banking'],
-  Reconciliation: ['Reconciliation'], 'Risk & Score': ['Risk & SWOT'], 'Credit Decision': ['Credit Decision'],
+  Reconciliation: ['Reconciliation'], 'Risk & Score': ['Risk & SWOT'], SWOT: ['SWOT', 'Risk & SWOT'], 'Credit Decision': ['Credit Decision'],
   Documents: ['Loan File'], 'Company Master': ['Loan File'], 'Bank Statements': ['Loan File', 'Banking'], 'GSTR-3B Returns': ['Loan File', 'GST'], 'Existing Loans': ['Loan File', 'Credit Decision'],
   'Bureau & Net Worth': ['Loan File', 'Ageing & Bureau'], 'Debtors Ageing': ['Loan File', 'Ageing & Bureau'], 'Creditors Ageing': ['Loan File', 'Ageing & Bureau'], 'Ageing (entered)': ['Ageing & Bureau'], 'Tally Parties': ['Loan File', 'GST'],
   'Cleaning Log': ['ALL'],
@@ -95,6 +95,7 @@ export function exportExcel(a: Analysis, ds: Dataset, measures: CustomMeasure[],
     [], ['GST buyer', 'GSTIN', 'GST sales', 'Incl GST', 'Bank party', 'Bank receipts', 'Variance', 'Status'], ...rc.buyers.rows.map((r) => [r.gstParty, r.gstin, r.gstAmount, r.gstGross, r.bankParty, r.bankAmount, r2(r.variance), r.status])]);
   add('Risk & Score', [['Dimension', 'Score', 'Classification', 'Basis'], ...a.risk.scores.map((s) => [s.name, s.score, s.classification, s.basis]), ['OVERALL', a.risk.overall.score, a.risk.overall.risk], [], ['Area', 'Severity', 'Red flag'], ...a.risk.flags.map((f) => [f.area, f.severity, f.text]),
     [], ['SWOT'], ...a.risk.swot.strengths.map((s) => ['Strength', s]), ...a.risk.swot.weaknesses.map((s) => ['Weakness', s]), ...a.risk.swot.opportunities.map((s) => ['Opportunity', s]), ...a.risk.swot.threats.map((s) => ['Threat', s])]);
+  add('SWOT', [['Type', 'Observation', 'Detail', 'Metric', 'Value', 'Benchmark', 'Severity', 'Source', 'Section', 'Recommendation'], ...a.swot.items.map((i) => [i.type, i.title, i.detail, i.metric, i.value, i.benchmark, i.severity, i.source, i.section, i.recommendation])]);
   const d = a.risk.decision;
   add('Credit Decision', [['Decision', d.decision], ['Recommended funding', d.recommendedFunding], ['Product', d.product], ['Tenure', d.tenure], ['Repayment capacity', d.repayment], ['Security', d.security], ['Collateral / FLDG', d.collateral], [], ['Funding capacity'], ...a.risk.funding.method.map((m) => [m]), [], ['Question', 'Answer'], ...a.risk.qa.map((q) => [q.q, q.a])]);
   const x = ds.extra;
