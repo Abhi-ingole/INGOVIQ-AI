@@ -130,6 +130,7 @@ export interface ManualInputs {
   hidden: string[]; // page / section / visual keys the user has unticked (hidden everywhere incl. exports)
   bankLast12: boolean; // limit banking analysis to the latest 12 months
   pdfPasswords: string[];
+  excludedSources: string[]; // data sources unticked in the Filters pane
 }
 
 export const DEFAULT_INPUTS: ManualInputs = {
@@ -159,6 +160,7 @@ export const DEFAULT_INPUTS: ManualInputs = {
   hidden: [],
   bankLast12: false,
   pdfPasswords: [],
+  excludedSources: [],
 };
 
 export interface Dataset {
@@ -181,7 +183,7 @@ export interface ExtraData {
   gstr3b: import('./ingest/gstr3b').Gstr3b[];
   profile: Record<string, string>;
   directors: { name: string; designation: string; appointed: string }[];
-  gstCerts: { gstin: string; state: string; legalName: string; regDate: string }[];
+  gstCerts: { gstin: string; state: string; legalName: string; regDate: string; constitution?: string; tradeName?: string; address?: string }[];
   ledgerParties: import('./ingest/excelFormats').LedgerParty[];
   ledgerPeriod: string;
   momSales: import('./ingest/excelFormats').MomParty[];

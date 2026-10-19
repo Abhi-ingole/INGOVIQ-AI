@@ -9,13 +9,57 @@ import type { CustomMeasure } from './pages/Custom';
 const r2 = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) ? null : Math.round(v * 10000) / 10000);
 
 /** Excel workbook with every cleaned table and every calculated table. */
-export function exportExcel(a: Analysis, ds: Dataset, measures: CustomMeasure[], hidden: string[] = []) {
-  const show = (page: string) => !hidden.includes(`page:${page}`);
+const SHEET_PAGES: Record<string, string[]> = {
+  Cover: ['*'], 'Executive Summary': ['Overview'], 'Company Profile': ['Overview', 'Loan File'],
+  '3Y Performance': ['Financials'], 'Financials (cleaned)': ['Financials'], 'Custom Measures': ['Financials', 'My Visuals'], '21 Ratios': ['Ratios'], 'Working Capital': ['Working Capital'],
+  'GST Monthly': ['GST'], 'GST Buyers': ['GST'], 'GST Suppliers': ['GST'], 'GST Concentration': ['GST'], 'GST Filing': ['GST'], 'GST States': ['GST'], 'GST Exports': ['GST'],
+  'Bank Monthly': ['Banking'], 'Bank Adjusted Inflow': ['Banking'], 'Bank Parties': ['Banking'], 'Bank Transactions': ['Banking'], 'Loans & Utilisation': ['Banking'],
+  Reconciliation: ['Reconciliation'], 'Risk & Score': ['Risk & SWOT'], 'Credit Decision': ['Credit Decision'],
+  Documents: ['Loan File'], 'Company Master': ['Loan File'], 'Bank Statements': ['Loan File', 'Banking'], 'GSTR-3B Returns': ['Loan File', 'GST'], 'Existing Loans': ['Loan File', 'Credit Decision'],
+  'Bureau & Net Worth': ['Loan File', 'Ageing & Bureau'], 'Debtors Ageing': ['Loan File', 'Ageing & Bureau'], 'Creditors Ageing': ['Loan File', 'Ageing & Bureau'], 'Ageing (entered)': ['Ageing & Bureau'], 'Tally Parties': ['Loan File', 'GST'],
+  'Cleaning Log': ['ALL'],
+};
+const INR_FMT = '[>=10000000]##\\,##\\,##\\,##0;[>=100000]##\\,##\\,##0;##,##0';
+const INR_FMT2 = '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00';
+
+/** Sheet with readable formatting: column widths, Indian number grouping, filter on the header row. */
+function niceSheet(rows: unknown[][]) {
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const widths: number[] = [];
+  rows.forEach((r, ri) => (r || []).forEach((v, ci) => {
+    const len = v === null || v === undefined ? 0 : typeof v === 'number' ? 14 : String(v).length;
+    widths[ci] = Math.min(60, Math.max(widths[ci] || 8, len + 2));
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      const cell = ws[XLSX.utils.encode_cell({ r: ri, c: ci })];
+      if (!cell) return;
+      const int = Math.abs(v - Math.round(v)) < 1e-9;
+      cell.z = Math.abs(v) >= 1000 ? (int ? INR_FMT : INR_FMT2) : int ? '0' : Math.abs(v) < 10 ? '0.00##' : '0.00';
+    }
+  }));
+  ws['!cols'] = widths.map((w) => ({ wch: w }));
+  const head = rows[0] || [];
+  if (rows.length > 2 && head.length > 2 && head.every((h) => typeof h === 'string' && h)) ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: head.length - 1 } }) };
+  return ws;
+}
+
+/** Excel workbook with every cleaned table and every calculated table (or only one report page). */
+export function exportExcel(a: Analysis, ds: Dataset, measures: CustomMeasure[], hidden: string[] = [], onlyPage?: string) {
   const wb = XLSX.utils.book_new();
-  const add = (name: string, rows: unknown[][]) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name.slice(0, 31));
-  add('Cover', [['INGOVIQ AI — Integrated Financial, GST, Banking & Credit Analysis'], ['Company', a.company], ['Generated', new Date().toLocaleString('en-IN')], ['Overall AI credit score', a.risk.overall.score, a.risk.overall.risk], ['Decision', a.risk.decision.decision], [], ['Disclaimer', DISCLAIMER]]);
+  const wanted = (name: string) => {
+    const pages = SHEET_PAGES[name] || ['*'];
+    if (pages.includes('*')) return true;
+    if (pages.includes('ALL')) return !onlyPage;
+    if (onlyPage) return pages.includes(onlyPage);
+    return pages.some((p) => !hidden.includes(`page:${p}`));
+  };
+  const add = (name: string, rows: unknown[][]) => { if (wanted(name) && rows.length) XLSX.utils.book_append_sheet(wb, niceSheet(rows), name.slice(0, 31)); };
+  const show = (_p: string) => true; // eslint-disable-line @typescript-eslint/no-unused-vars
+  add('Cover', [['INGOVIQ AI — Integrated Financial, GST, Banking & Credit Analysis'], ['Report', onlyPage || 'Complete report'], ['Company', a.company], ['Generated', new Date().toLocaleString('en-IN')], ['Overall AI credit score', a.risk.overall.score, a.risk.overall.risk], ['Decision', a.risk.decision.decision], [], ['Disclaimer', DISCLAIMER]]);
   const snap = Object.entries(a.risk.snapshot);
   add('Executive Summary', [['Parameter', 'Assessment'], ...snap, [], ['Analyst note', a.risk.analystNote]]);
+  const prof = { ...(ds.extra?.profile || {}), ...Object.fromEntries(Object.entries(ds.financial?.profile || {}).filter(([, v]) => v)) };
+  add('Company Profile', [['Particular', 'Details'], ['Company Name', a.company], ...Object.entries(prof), ['GSTIN', (ds.gst?.gstins || ds.extra?.gstCerts.map((g) => g.gstin) || []).join(', ')],
+    ['Directors', (ds.financial?.directors.length ? ds.financial.directors.map((d) => d.name) : (ds.extra?.directors || []).map((d) => `${d.name} (${d.designation}, ${d.appointed})`)).join(', ')]]);
   if (a.fin && (show('Financials') || show('Ratios') || show('Working Capital'))) {
     const fys = a.fin.fys;
     add('3Y Performance', [['Parameter', 'Formula', ...fys, ...fys.slice(1).map((f) => `YoY ${f}`), 'CAGR', 'Trend'], ...a.fin.performance.map((m) => [m.name, m.formula, ...fys.map((f) => r2(m.values[f])), ...fys.slice(1).map((f) => r2(m.yoy[f])), r2(m.cagr), m.trend])]);
@@ -65,11 +109,11 @@ export function exportExcel(a: Analysis, ds: Dataset, measures: CustomMeasure[],
     if (x.ledgerParties.length) add('Tally Parties', [['Party ledger', 'Sales', 'Purchases', 'Receipts', 'Payments', 'Closing (Dr +, Cr −)'], ...x.ledgerParties.map((p) => [p.name, Object.values(p.sales).reduce((u, v) => u + v, 0), Object.values(p.purchases).reduce((u, v) => u + v, 0), p.receipts, p.payments, p.closing])]);
   }
   add('Cleaning Log', [['Level', 'File', 'Message'], ...ds.log.map((l) => [l.level, l.source, l.message])]);
-  XLSX.writeFile(wb, `INGOVIQ_${a.company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  XLSX.writeFile(wb, `INGOVIQ_${onlyPage ? onlyPage.replace(/[^\w]+/g, '_') + '_' : ''}${a.company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 /** Capture each element as an A4-landscape PDF page (long sections continue onto further pages). Disclaimer footer on every page. */
-export async function exportPdf(sections: HTMLElement[], company: string, onProgress?: (msg: string) => void) {
+export async function exportPdf(sections: HTMLElement[], company: string, onProgress?: (msg: string) => void, only?: string) {
   const [{ jsPDF }, html2canvas] = await Promise.all([import('jspdf'), import('html2canvas').then((m) => m.default)]);
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
   const W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight();
@@ -138,7 +182,7 @@ export async function exportPdf(sections: HTMLElement[], company: string, onProg
       c = e;
     }
   }
-  pdf.save(`INGOVIQ_Credit_Report_${company.replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`);
+  pdf.save(`INGOVIQ_${only ? only.replace(/[^\w]+/g, '_') : 'Credit_Report'}_${company.replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`);
 }
 
 export async function exportPng(el: HTMLElement, name: string) {

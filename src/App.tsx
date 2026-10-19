@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { analyse, effectiveDataset } from './engine/analyse';
 import { DEFAULT_INPUTS, type ManualInputs, type Dataset } from './engine/types';
-import { buildDatasetFromFiles, autoInputs, mergeInputs } from './engine/ingest/pack';
+import { buildDatasetFromFiles, autoInputs, mergeInputs, selectSources } from './engine/ingest/pack';
 import { browserPdfLoader } from './ui/pdfLoader';
 import { type Incoming, ACCEPT, fromFileList, pickDirectory } from './ui/fileIntake';
 import { LoanFile } from './ui/pages/LoanFile';
@@ -67,7 +67,8 @@ export default function App() {
   const [pane, setPane] = useState(true);
   const [toast, setToast] = useState('');
   const [busy, setBusy] = useState('');
-  const [exporting, setExporting] = useState(false);
+  const [exportPages, setExportPages] = useState<Page[] | null>(null);
+  const exporting = !!exportPages;
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [needReconnect, setNeedReconnect] = useState(false);
   const [snapshot, setSnapshot] = useState<EmbeddedSnapshot | null>(null);
@@ -228,7 +229,10 @@ export default function App() {
     return () => { cancelled = true; };
   }, [files, pwKey, say]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ds0 = frozenDs || builtDs;
+  const dsAll = frozenDs || builtDs;
+  // Data-source tick boxes in the Filters pane: an unticked source is left out of every calculation
+  const excluded = useMemo(() => inp.excludedSources || [], [inp.excludedSources]);
+  const ds0 = useMemo(() => selectSources(dsAll, excluded), [dsAll, excluded]);
   const auto = useMemo(() => autoInputs(ds0), [ds0]);
   const effInp = useMemo(() => mergeInputs({ ...DEFAULT_INPUTS, ...inp }, auto, DEFAULT_INPUTS), [inp, auto]);
   const ds = useMemo(() => effectiveDataset(ds0, effInp), [ds0, effInp]);
@@ -236,7 +240,22 @@ export default function App() {
   const hidden = effInp.hidden || [];
   const toggleHidden = useCallback((k: string) => setInpState((s) => { const h = s.hidden || []; const n = { ...s, hidden: h.includes(k) ? h.filter((x) => x !== k) : [...h, k] }; lsSet('ingoviq.inputs', n); return n; }), []);
   const hideFor = (p: string, exp = false): HideState => ({ page: p, hidden, customize: customize && !exp, toggle: toggleHidden });
-  const visiblePages = PAGES.filter((p) => customize || !hidden.includes(`page:${p}`));
+  // only the reports the uploaded files can feed get a tab
+  const pageHasData = (p: Page): boolean => {
+    const x = ds.extra;
+    switch (p) {
+      case 'Financials': case 'Ratios': case 'Working Capital': return !!ds.financial;
+      case 'GST': return !!ds.gst;
+      case 'Banking': return !!ds.banking;
+      case 'Reconciliation': return [ds.financial, ds.gst, ds.banking].filter(Boolean).length >= 2;
+      case 'Ageing & Bureau': return !!(x && (x.ageing.length || x.cibil.length)) || effInp.ageing.some((b) => b.receivable || b.payable) || effInp.cibilScore !== null || effInp.cmrRank !== null;
+      case 'Loan File': return !!(ds.docs && ds.docs.some((d) => !/analysis report/i.test(d.type)));
+      default: return true;
+    }
+  };
+  const availablePages = PAGES.filter(pageHasData);
+  const visiblePages = availablePages.filter((p) => customize || !hidden.includes(`page:${p}`));
+  useEffect(() => { if (view === 'report' && visiblePages.length && !visiblePages.includes(page)) setPage(visiblePages[0]); }, [visiblePages.join('|'), view]); // eslint-disable-line react-hooks/exhaustive-deps
   useSectionHiding(pageRef, [page, view, hidden, customize, ds]);
   useSectionHiding(exportRef, [exporting, hidden]);
   const hasData = !!(ds.financial || ds.gst || ds.banking || ds.docs?.length);
@@ -261,19 +280,19 @@ export default function App() {
     }
   };
 
-  const doPdf = async () => {
+  const doPdf = async (only?: Page) => {
     if (!hasData) return;
-    setExporting(true);
-    setBusy('Preparing PDF report…');
+    setExportPages(only ? [only] : availablePages.filter((p) => (p !== 'My Visuals' || visuals.length) && !hidden.includes(`page:${p}`)));
+    setBusy(only ? `Preparing ${only} PDF…` : 'Preparing PDF report…');
     await new Promise((r) => setTimeout(r, 1500)); // let every chart render in light theme
     try {
       exportRef.current?.querySelectorAll('details').forEach((d) => { (d as HTMLDetailsElement).open = true; });
       await new Promise((r) => setTimeout(r, 300));
       const secs = [...(exportRef.current?.querySelectorAll<HTMLElement>('.export-sec') || [])];
-      await exportPdf(secs, a.company, setBusy);
-      say('PDF report downloaded');
+      await exportPdf(secs, a.company, setBusy, only);
+      say(only ? `${only} PDF downloaded` : 'PDF report downloaded');
     } catch (e) { say(`PDF export failed: ${(e as Error).message}`); }
-    setExporting(false);
+    setExportPages(null);
     setBusy('');
   };
 
@@ -296,16 +315,16 @@ export default function App() {
   const docsOf = (re: RegExp) => (ds.docs || []).filter((d) => d.status === 'used' && re.test(d.type));
   const fileNames = (re: RegExp, kind: string) => [...docsOf(re).map((d) => d.path.split('/').pop() || d.path), ...files.filter((f) => f.kind === kind).map((f) => f.name)];
   const sources = [
-    { label: 'Financials', ok: !!ds.financial, live: files.some((f) => f.kind === 'financial' && f.handle), files: fileNames(/financial/i, 'financial'),
+    { key: 'financial', label: 'Financials', ok: !!ds.financial, live: files.some((f) => f.kind === 'financial' && f.handle), files: fileNames(/financial/i, 'financial'),
       detail: ds.financial ? `${ds.financial.fys.join(', ') || 'no years'}${!ds0.financial && ds.financial ? ' · typed in Data view' : ''}` : (ds.docs || []).some((d) => d.status === 'scanned' && /financial|itr/i.test(d.type)) ? 'Scanned PDFs only — add years in Data view' : '' },
-    { label: 'GST', ok: !!ds.gst, live: files.some((f) => f.kind === 'gst' && f.handle), files: fileNames(/gst/i, 'gst'),
+    { key: 'gst', label: 'GST', ok: !!ds.gst, live: files.some((f) => f.kind === 'gst' && f.handle), files: fileNames(/gst/i, 'gst'),
       detail: ds.gst ? `${ds.gst.gstins.length} GSTIN · ${span(ds.gst.months)}${ds.extra?.gstr3b.length ? ` · ${ds.extra.gstr3b.length} GSTR-3B` : ''}` : '' },
-    { label: 'Banking', ok: !!ds.banking, live: files.some((f) => f.kind === 'banking' && f.handle), files: fileNames(/bank/i, 'banking'),
+    { key: 'banking', label: 'Banking', ok: !!ds.banking, live: files.some((f) => f.kind === 'banking' && f.handle), files: fileNames(/bank/i, 'banking'),
       detail: ds.banking ? `${ds.banking.accounts.length || new Set(ds.banking.txns.map((t) => t.account)).size} account(s) · ${ds.banking.txns.length.toLocaleString('en-IN')} txns · ${span(ds.banking.months)}` : '' },
-    ...(ds.extra && ds.docs?.length ? [
-      { label: 'CIBIL / CMR', ok: ds.extra.cibil.length > 0, live: false, files: fileNames(/cibil/i, '-'), detail: ds.extra.cibil.map((c) => (c.kind === 'commercial' ? `CMR-${c.cmr ?? '?'}` : `${c.score ?? '?'}`)).join(' · ') },
-      { label: 'Ledgers / ageing', ok: ds.extra.ledgerParties.length + ds.extra.ageing.length + ds.extra.momSales.length > 0, live: false, files: fileNames(/ledger|ageing|mom/i, '-'), detail: [ds.extra.ledgerParties.length ? `${ds.extra.ledgerParties.length} Tally parties` : '', ds.extra.ageing.length ? `${ds.extra.ageing.length} ageing file(s)` : ''].filter(Boolean).join(' · ') },
-      { label: 'Loans & net worth', ok: ds.extra.loans.length + ds.extra.networth.length > 0, live: false, files: fileNames(/loan|net-worth/i, '-'), detail: [ds.extra.loans.length ? `${ds.extra.loans.length} loans` : '', ds.extra.networth.length ? `${ds.extra.networth.length} net-worth cert.` : ''].filter(Boolean).join(' · ') },
+    ...(dsAll.extra && dsAll.docs?.length ? [
+      { key: 'bureau', label: 'CIBIL / CMR', ok: (ds.extra?.cibil.length ?? 0) > 0, live: false, files: fileNames(/cibil/i, '-'), detail: (ds.extra?.cibil || []).map((c) => (c.kind === 'commercial' ? `CMR-${c.cmr ?? '?'}` : `${c.score ?? '?'}`)).join(' · ') },
+      { key: 'ledgers', label: 'Ledgers / ageing', ok: (ds.extra?.ledgerParties.length ?? 0) + (ds.extra?.ageing.length ?? 0) + (ds.extra?.momSales.length ?? 0) > 0, live: false, files: fileNames(/ledger|ageing|mom/i, '-'), detail: [ds.extra?.ledgerParties.length ? `${ds.extra.ledgerParties.length} Tally parties` : '', ds.extra?.ageing.length ? `${ds.extra.ageing.length} ageing file(s)` : ''].filter(Boolean).join(' · ') },
+      { key: 'loans', label: 'Loans & net worth', ok: (ds.extra?.loans.length ?? 0) + (ds.extra?.networth.length ?? 0) > 0, live: false, files: fileNames(/loan|net-worth/i, '-'), detail: [ds.extra?.loans.length ? `${ds.extra.loans.length} loans` : '', ds.extra?.networth.length ? `${ds.extra.networth.length} net-worth cert.` : ''].filter(Boolean).join(' · ') },
     ] : []),
   ];
 
@@ -337,7 +356,7 @@ export default function App() {
           <button className={`rb ${customize ? 'on' : ''}`} disabled={!hasData} onClick={() => { setCustomize(!customize); if (!customize) setView('report'); }} title="Tick / untick pages, sections and visuals to show or hide them — also in PDF and HTML"><span className="ic">☑</span>Show / hide</button>
         </div>
         <div className="group">
-          <button className="rb" disabled={!hasData} onClick={doPdf}><span className="ic">📄</span>PDF report</button>
+          <button className="rb" disabled={!hasData} onClick={() => doPdf()} title="Full report — every visible page"><span className="ic">📄</span>PDF report</button>
           <button className="rb" disabled={!hasData} onClick={() => exportExcel(a, ds, measures, hidden)}><span className="ic">📗</span>Excel</button>
           <button className="rb" disabled={!hasData} title="One offline HTML file with the full interactive dashboard and data" onClick={doHtml}><span className="ic">🌐</span>HTML</button>
           <button className="rb" disabled={!hasData || view === 'home'} onClick={() => pageRef.current && exportPng(pageRef.current, `${a.company}_${view === 'report' ? page : view}`)}><span className="ic">🖼</span>PNG page</button>
@@ -372,7 +391,12 @@ export default function App() {
               {view === 'report' && hasData && (
                 <>
                   <div className="page-head"><div><h1>{page}</h1><div className="sub">{PAGE_SUB[page]} · {a.company}</div></div>
-                    {fySel.length > 0 && <div className="small">Filtered: {fySel.join(', ')} <button className="btn small" onClick={() => setFySel([])}>Clear filter</button></div>}</div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {fySel.length > 0 && <span className="small">Filtered: {fySel.join(', ')} <button className="btn small" onClick={() => setFySel([])}>Clear filter</button></span>}
+                      <button className="btn small" title={`Download only the ${page} report as PDF`} onClick={() => doPdf(page)}>⤓ {page} PDF</button>
+                      <button className="btn small" title={`Download only the ${page} data as Excel`} onClick={() => exportExcel(a, ds, measures, hidden, page)}>⤓ {page} Excel</button>
+                      <button className="btn small" title="Save this page as an image" onClick={() => pageRef.current && exportPng(pageRef.current, `${a.company}_${page}`)}>⤓ PNG</button>
+                    </div></div>
                   {customize && (
                     <div className="note customize-bar">
                       <b>Show / hide mode.</b> Untick a page tab, a section title or a visual to hide it from the dashboard, the PDF report and the HTML export. Hidden items stay dimmed here so you can tick them back.
@@ -408,12 +432,16 @@ export default function App() {
                 </div>
                 <div className="filter-card">
                   <h4>Data sources</h4>
-                  {sources.map((x) => (
-                    <div key={x.label} className="small" style={{ padding: '3px 0' }} title={x.files.join('\n')}>
-                      {x.ok ? '✅' : '⬜'} <b style={{ fontWeight: 600 }}>{x.label}</b>{x.live && <span className="muted"> · live</span>}
-                      {x.detail && <div className="muted" style={{ paddingLeft: 20, fontSize: 11 }}>{x.detail}</div>}
-                    </div>
-                  ))}
+                  {sources.map((x) => {
+                    const off = excluded.includes(x.key);
+                    return (
+                      <label key={x.label} className="small src-row" style={{ padding: '3px 0', display: 'block', cursor: x.ok || off ? 'pointer' : 'default', opacity: x.ok || off ? 1 : 0.6 }} title={(x.ok || off) ? `${off ? 'Tick to use' : 'Untick to leave out'} ${x.label} in every page${x.files.length ? '\n\n' + x.files.slice(0, 30).join('\n') : ''}` : 'No file of this type uploaded'}>
+                        <input type="checkbox" disabled={!x.ok && !off} checked={x.ok && !off} onChange={() => setInp({ excludedSources: off ? excluded.filter((k) => k !== x.key) : [...excluded, x.key] })} style={{ marginRight: 6 }} />
+                        <b style={{ fontWeight: 600 }}>{x.label}</b>{x.live && <span className="muted"> · live</span>}{off && <span className="muted"> · left out</span>}
+                        {(x.detail || off) && <div className="muted" style={{ paddingLeft: 22, fontSize: 11 }}>{off ? 'Not used in the report — tick to include' : x.detail}</div>}
+                      </label>
+                    );
+                  })}
                   {!files.length && <div className="small muted">No files loaded</div>}
                   {files.length > 0 && <div className="small muted" style={{ marginTop: 4 }}>{ds.docs?.length || files.length} file(s){progress ? ' · reading…' : ''}</div>}
                 </div>
@@ -441,16 +469,17 @@ export default function App() {
       <input ref={folderInput} type="file" multiple hidden {...{ webkitdirectory: '', directory: '' }} onChange={(e) => { if (e.target.files) addFiles(fromFileList(e.target.files), true); e.target.value = ''; }} />
       {(toast || busy || progress) && <div className="toast">{busy || progress || toast}</div>}
 
-      {exporting && (
+      {exportPages && (
         <ExportMode.Provider value={true}><div className="export-root" ref={exportRef}>
-          <div className="page export-sec" data-title="Cover">
+          {exportPages.length > 1 && <div className="page export-sec" data-title="Cover">
             <div style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '30px 10px' }}>
               <img src={logoFull} alt="" style={{ width: 420 }} />
               <div><h1 style={{ margin: 0 }}>Integrated Financial, GST, Banking & Credit Analysis Report</h1><h2 style={{ margin: '8px 0', fontWeight: 500 }}>{a.company}</h2>
-                <div className="muted">Generated {new Date().toLocaleString('en-IN')} · Overall AI credit score {a.risk.overall.score ?? '—'}/100 · {a.risk.decision.decision}</div></div>
+                <div className="muted">Generated {new Date().toLocaleString('en-IN')} · Overall AI credit score {a.risk.overall.score ?? '—'}/100 · {a.risk.decision.decision}</div>
+                <div className="muted small" style={{ marginTop: 8 }}>Contents: {exportPages.join(' · ')}</div></div>
             </div>
-          </div>
-          {PAGES.filter((p) => (p !== 'My Visuals' || visuals.length) && !hidden.includes(`page:${p}`) && (p !== 'Loan File' || ds.docs?.length)).map((p) => (
+          </div>}
+          {exportPages.map((p) => (
             <div key={p} className="page export-sec" data-title={p}>
               <div className="page-head"><div><h1>{p}</h1><div className="sub">{PAGE_SUB[p]} · {a.company}</div></div></div>
               <HideCtx.Provider value={hideFor(p, true)}><PageGuard name={p}>{renderPage(p, { ...ctx, themeKey, exporting: true })}</PageGuard></HideCtx.Provider>

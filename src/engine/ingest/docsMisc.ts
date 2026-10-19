@@ -66,8 +66,37 @@ export function parseMca(text: string): { profile: CompanyProfile; directors: { 
 }
 
 export function looksLikeGstCertificate(t: string) { return /Form GST REG-06|Registration Certificate/i.test(t) && /GSTIN|Registration Number/i.test(t); }
-export function parseGstCertificate(text: string): { gstin: string; state: string; legalName: string; regDate: string } {
+export function parseGstCertificate(text: string): { gstin: string; state: string; legalName: string; regDate: string; constitution?: string; tradeName?: string; address?: string } {
   const gstin = text.match(/Registration Number\s*:?\s*([0-9]{2}[A-Z0-9]{13})/i)?.[1] || text.match(/\b([0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z])\b/)?.[1] || '';
   const state = text.match(/State\s*:?\s*([A-Za-z ]+?)\s*(?:\n|PIN|Pin)/)?.[1]?.trim() || '';
-  return { gstin, state, legalName: text.match(/Legal Name\s*:?\s*(.+)/i)?.[1]?.trim() || '', regDate: parseDate(text.match(/Date of Liability\s*:?\s*(\d{2}\/\d{2}\/\d{4})/i)?.[1] || '') || '' };
+  const addr = text.match(/Address of Principal Place of\s*([\s\S]*?)\n\s*5\.\s*Date of Liability/i)?.[1]?.replace(/^\s*|\bBusiness\b\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  return {
+    gstin, state, legalName: text.match(/Legal Name\s*:?\s*(.+)/i)?.[1]?.trim() || '', regDate: parseDate(text.match(/Date of Liability\s*:?\s*(\d{2}\/\d{2}\/\d{4})/i)?.[1] || '') || '',
+    constitution: text.match(/Constitution of Business\s*:?\s*(.+)/i)?.[1]?.trim(), tradeName: text.match(/Trade Name,? if any\s*:?\s*(.+)/i)?.[1]?.trim(), address: addr,
+  };
+}
+
+/* Udyam (MSME) registration certificate */
+export function looksLikeUdyam(t: string) { return /UDYAM REGISTRATION/i.test(t) && /UDYAM-[A-Z]{2}-\d{2}-\d+/.test(t); }
+export function parseUdyam(text: string): Record<string, string> {
+  const o: Record<string, string> = {};
+  const num = text.match(/(UDYAM-[A-Z]{2}-\d{2}-\d+)/)?.[1]; if (num) o['Udyam Registration'] = num;
+  const type = text.match(/\d\s+(20\d{2}-\d{2})\s+(Micro|Small|Medium)\b/i); if (type) o['MSME Category'] = `${type[2]} enterprise (${type[1]})`;
+  const act = text.match(/MAJOR ACTIVITY\s+([A-Z ]+?)\s*\n/i)?.[1]; if (act) o['Major Activity'] = act.trim();
+  const nic = text.match(/\b(\d{2}) - ([A-Za-z ,]+?)\s+(\d{4}) - ([A-Za-z ,]+?)\s+(\d{5}) - ([A-Za-z ,.]+?)\s+(Trading|Manufacturing|Services)/i);
+  if (nic) {
+    // the NIC description wraps over the next lines: pick the continuation words column-wise is not possible, so keep the first line of each
+    o['NIC Code'] = `${nic[5]} (${nic[3]} / ${nic[1]})`;
+    o['Industry (NIC)'] = `${nic[2].replace(/,$/, '')}`;
+    o['Activity (NIC)'] = nic[7];
+  }
+  const comm = text.match(/COMMENCEMENT OF\s+(\d{2}\/\d{2}\/\d{4})/i)?.[1]; if (comm) o['Commencement of Business'] = comm;
+  const email = text.match(/Email:\s*(\S+@\S+)/i)?.[1]; if (email) o['Email'] = email;
+  return o;
+}
+export function looksLikeLei(t: string) { return /LEI code of/i.test(t); }
+export function parseLei(text: string): Record<string, string> {
+  const m = text.match(/LEI code of .+? is:\s*([A-Z0-9]{20})/i);
+  const v = text.match(/Valid till\s+([0-9]{1,2} [A-Za-z]{3} \d{4})/i);
+  return m ? { LEI: `${m[1]}${v ? ` (valid till ${v[1]})` : ''}` } : {};
 }

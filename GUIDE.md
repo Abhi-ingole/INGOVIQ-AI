@@ -34,7 +34,10 @@
     - Downloaded HTML madhe navin Excel data pahije tar **Get data / Refresh** dabav ani updated files nivad (Chrome/Edge madhe Live pan on hote). Mag tithunach parat **🌐 HTML** download kar — navin data sahit.
 12. **Nako asleli mahiti lapvne (Show / hide):** ribbon madhe **☑ Show / hide** dabav. Page tabs, section titles ani pratyek graph var tick box yeto — untick kela ki te dashboard, PDF, Excel (page) ani HTML madhun nighte. **Done** dabav. Parat sagla dakhvaycha asel tar *Show everything*.
 13. **PDF madhe sagla data:** PDF madhe pratyek table chya sagle rows, pratyek financial year vegla (statements, buyers, suppliers, states) yetat; page break row chya madhe yeto, row tutat nahi.
-14. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
+14. **Fakt data asalele tabs:** jya prakarchya files upload kelya, tyache ch report tabs distat (e.g. financials nastil tar Financials / Ratios / Working Capital tabs disat nahit).
+15. **Pratyek report vegla download:** pratyek page chya varti **⤓ <page> PDF**, **⤓ <page> Excel** ani **⤓ PNG** buttons aahet. Ribbon madhla **PDF report** / **Excel** purna report deto. Excel madhe Indian number format (₹ lakh / crore grouping), column widths ani filter set astat.
+16. **Data sources tick box (Filters pane):** ekhada source untick kela (e.g. Banking) tar to sagla report madhun vagalla jato; parat tick kela ki parat yeto. Financial year tick kela ki Overview, GST ani Banking charts tya varshapurte filter hotat.
+17. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
 
 ## Part 3 · Accuracy kashi check karaychi
 

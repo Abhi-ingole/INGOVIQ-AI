@@ -11,7 +11,7 @@ import { fyOfMonth, sortFYs, nameTokens, daysBetween } from '../utils';
 import { type PdfLoader, type PdfDoc, PdfPasswordError, docText, passwordsFromPath } from './pdf';
 import { looksLikeBankStatement, parseBankStatement, chainByBalance, type ParsedStatement } from './bankPdf';
 import { looksLikeGstr3b, parseGstr3b, gstr3bDue, type Gstr3b } from './gstr3b';
-import { looksLikeCibil, parseCibil, looksLikeNetworth, parseNetworth, looksLikeMca, parseMca, looksLikeGstCertificate, parseGstCertificate } from './docsMisc';
+import { looksLikeCibil, parseCibil, looksLikeNetworth, parseNetworth, looksLikeMca, parseMca, looksLikeGstCertificate, parseGstCertificate, looksLikeUdyam, parseUdyam, looksLikeLei, parseLei } from './docsMisc';
 import { detectExcelFormat, parseTallyLedgers, parseMom, parseAgeing, parseLoanObligation, parseFinancialTemplate, AGE_BUCKETS, type LedgerParty, type MomParty } from './excelFormats';
 import { STATE_CODES } from '../calcGst';
 
@@ -128,7 +128,11 @@ export async function buildDatasetFromFiles(input: PackFile[], loader: PdfLoader
         } else if (looksLikeMca(text)) {
           const m = parseMca(docText(pdf, 10)); Object.assign(extra.profile, m.profile); if (m.directors.length) extra.directors = m.directors; doc.type = 'MCA master data'; doc.status = 'used'; doc.note = `${m.directors.length} directors`;
         } else if (looksLikeGstCertificate(text)) {
-          const g = parseGstCertificate(text); g.state ||= STATE_CODES[g.gstin.slice(0, 2)] || ''; if (g.gstin && !extra.gstCerts.some((x) => x.gstin === g.gstin)) extra.gstCerts.push(g); doc.type = 'GST registration certificate'; doc.status = 'used'; doc.note = g.gstin;
+          const g = parseGstCertificate(text); g.state ||= STATE_CODES[g.gstin.slice(0, 2)] || ''; if (g.constitution) extra.profile['Constitution (GST)'] ||= g.constitution; if (g.tradeName) extra.profile['Trade Name'] ||= g.tradeName; if (g.address) extra.profile[`Place of business – ${g.state || g.gstin.slice(0, 2)}`] = g.address; if (g.gstin && !extra.gstCerts.some((x) => x.gstin === g.gstin)) extra.gstCerts.push(g); doc.type = 'GST registration certificate'; doc.status = 'used'; doc.note = g.gstin;
+        } else if (looksLikeUdyam(text)) {
+          const u = parseUdyam(text); for (const [k, v] of Object.entries(u)) extra.profile[k] ||= v; doc.type = 'Udyam (MSME) certificate'; doc.status = 'used'; doc.note = u['MSME Category'] || u['Udyam Registration'] || '';
+        } else if (looksLikeLei(text)) {
+          const l = parseLei(text); Object.assign(extra.profile, l); doc.type = 'LEI certificate'; doc.status = 'used'; doc.note = l.LEI || '';
         } else if (looksLikeBankStatement(text) || /statement/i.test(f.path) || /bank/i.test(f.path)) {
           const st = parseBankStatement(pdf, baseName(f.path));
           if (st.txns.length) { statements.push({ file: f.path, st }); doc.type = 'Bank statement'; doc.status = 'used'; doc.note = `${st.account.bank} ${st.account.account.slice(-4)} · ${st.txns.length} txns${st.balanceMismatches ? ` · ${st.balanceMismatches} balance breaks` : ''}`; }
@@ -319,4 +323,24 @@ export function mergeInputs(user: ManualInputs, auto: Partial<ManualInputs>, def
     if (JSON.stringify(user[k]) === JSON.stringify(defaults[k])) (out as unknown as Record<string, unknown>)[k] = v;
   }
   return out;
+}
+
+/** Leave unticked data sources out of the analysis (Filters pane → Data sources). */
+export function selectSources(ds: Dataset, excluded: string[]): Dataset {
+  if (!excluded.length) return ds;
+  const off = (k: string) => excluded.includes(k);
+  const x = ds.extra;
+  return {
+    ...ds,
+    financial: off('financial') ? null : ds.financial,
+    gst: off('gst') ? null : ds.gst,
+    banking: off('banking') ? null : ds.banking,
+    extra: x && {
+      ...x,
+      cibil: off('bureau') ? [] : x.cibil,
+      ledgerParties: off('ledgers') ? [] : x.ledgerParties, ageing: off('ledgers') ? [] : x.ageing, momSales: off('ledgers') ? [] : x.momSales, momPurchase: off('ledgers') ? [] : x.momPurchase,
+      loans: off('loans') ? [] : x.loans, networth: off('loans') ? [] : x.networth,
+      gstr3b: off('gst') ? [] : x.gstr3b, statements: off('banking') ? [] : x.statements,
+    },
+  };
 }
