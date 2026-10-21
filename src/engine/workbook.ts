@@ -3,11 +3,16 @@ import type { Workbook, Matrix } from './types';
 import { str } from './utils';
 
 export function readWorkbook(data: ArrayBuffer, fileName: string): Workbook {
-  const wb = XLSX.read(data, { type: 'array', cellDates: true, cellNF: false, cellText: false });
+  // dense mode is several times faster for sheet_to_json on large report sheets
+  const wb = XLSX.read(data, { type: 'array', cellDates: true, cellNF: false, cellText: false, dense: true } as XLSX.ParsingOptions);
   const sheets: Record<string, Matrix> = {};
   for (const name of wb.SheetNames) {
     const ws = wb.Sheets[name];
-    sheets[name] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true }) as Matrix;
+    const mx = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true }) as Matrix;
+    // report templates often format 15,000 empty rows — drop the blank tail so every parser scans less
+    let end = mx.length;
+    while (end > 0 && (mx[end - 1] || []).every((c) => c === null || c === undefined || c === '')) end--;
+    sheets[name] = end < mx.length ? mx.slice(0, end) : mx;
   }
   return { fileName, sheets, sheetOrder: wb.SheetNames };
 }

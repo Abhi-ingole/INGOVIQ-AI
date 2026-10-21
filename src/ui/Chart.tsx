@@ -4,7 +4,7 @@ import { BarChart, LineChart, PieChart, GaugeChart, RadarChart } from 'echarts/c
 import { GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, MarkLineComponent, RadarComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { fmtCr, fmtPct, fmtX, fmtNum, fmtINR } from '../engine/format';
-import { HideCtx, HideBox, vizKey } from './common';
+import { HideCtx, HideBox, vizKey, ExportMode } from './common';
 
 echarts.use([BarChart, LineChart, PieChart, GaugeChart, RadarChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, MarkLineComponent, RadarComponent, CanvasRenderer]);
 
@@ -73,7 +73,7 @@ export function buildOption(spec: ChartSpec, type: ChartType): echarts.EChartsCo
   const cat = { type: 'category', data: spec.categories, axisLabel: { color: text, fontSize: 11, hideOverlap: true }, axisLine: { lineStyle: { color: cssVar('--border-strong') } }, axisTick: { show: false } };
   const val = { type: 'value', axisLabel: { color: text, fontSize: 11, formatter: axisFmt(spec.unit) }, splitLine: { lineStyle: { color: grid } } };
   return {
-    animationDuration: 400,
+    animationDuration: 250,
     grid: { left: 8, right: 16, top: multi ? 34 : 14, bottom: spec.categories.length > 14 && !horizontal ? 40 : 8, containLabel: true },
     tooltip: baseTooltip,
     legend: multi ? { top: 0, left: 0, textStyle: { color: text }, itemWidth: 12, itemHeight: 8, icon: 'roundRect' } : undefined,
@@ -106,22 +106,32 @@ export function EChart({ option, height = 280, onReady, onClick }: { option: ech
   const inst = useRef<echarts.ECharts | null>(null);
   const clickRef = useRef(onClick);
   clickRef.current = onClick;
+  // charts below the fold are drawn only when scrolled near (exports draw everything at once)
+  const exporting = useContext(ExportMode);
+  const [visible, setVisible] = useState(exporting || typeof IntersectionObserver === 'undefined');
   useEffect(() => {
-    if (!ref.current) return;
+    if (visible || !ref.current) return;
+    const io = new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) { setVisible(true); io.disconnect(); } }, { rootMargin: '300px 0px' });
+    io.observe(ref.current);
+    return () => io.disconnect();
+  }, [visible]);
+  useEffect(() => {
+    if (!visible || !ref.current) return;
     const c = echarts.init(ref.current, undefined, { renderer: 'canvas' });
     inst.current = c;
     c.on('click', (p: { name?: string }) => { if (p?.name) clickRef.current?.(p.name); });
-    const ro = new ResizeObserver(() => { try { c.resize(); } catch (e) { console.warn('chart resize', e); } });
+    let raf = 0;
+    const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { try { c.resize(); } catch (e) { console.warn('chart resize', e); } }); });
     ro.observe(ref.current);
     onReady?.(c);
-    return () => { ro.disconnect(); c.dispose(); inst.current = null; };
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); c.dispose(); inst.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [visible]);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     // one bad chart must never take the whole dashboard down
-    try { inst.current?.setOption(option, true); setFailed(false); } catch (e) { console.warn('chart render failed', e); setFailed(true); try { inst.current?.clear(); } catch { /* ignore */ } }
-  }, [option]);
+    try { inst.current?.setOption(option, { notMerge: true, lazyUpdate: true }); setFailed(false); } catch (e) { console.warn('chart render failed', e); setFailed(true); try { inst.current?.clear(); } catch { /* ignore */ } }
+  }, [option, visible]);
   return <div style={{ position: 'relative', width: '100%', height }}><div ref={ref} style={{ width: '100%', height }} />{failed && <div className="muted small" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>This chart could not be drawn for the current data</div>}</div>;
 }
 

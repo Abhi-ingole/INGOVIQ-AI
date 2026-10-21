@@ -7,6 +7,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 export default defineConfig({
   plugins: [react(), viteSingleFile()],
   base: './',
+  worker: { format: 'es' },
   define: { __INGOVIQ_STANDALONE__: 'true' },
   build: { outDir: 'dist-standalone', emptyOutDir: true, assetsInlineLimit: 100_000_000, chunkSizeWarningLimit: 10000 },
 });

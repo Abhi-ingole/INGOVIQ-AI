@@ -7,13 +7,10 @@ import { type Incoming, ACCEPT, fromFileList, pickDirectory } from './ui/fileInt
 import { LoanFile } from './ui/pages/LoanFile';
 import { Swot } from './ui/pages/Swot';
 import { Assistant } from './ui/Assistant';
-import { buildPowerBiProject } from './ui/report/powerbi';
-import { swotPdf, swotExcel } from './ui/report/swotExport';
 import { buildEvidence } from './engine/evidence';
 import { PageGuard } from './ui/PageGuard';
-import { buildCreditReport } from './ui/report/creditReport';
-import { chartImage, toDataUrl } from './ui/report/chartImage';
 import { readWorkbook, detectKind, type FileKind } from './engine/workbook';
+import { buildInWorker, detectKindsInWorker } from './ui/workerClient';
 import { sortFYs, fyOfMonth, monthLabel } from './engine/utils';
 import type { PageCtx } from './ui/ctx';
 import { Overview } from './ui/pages/Overview';
@@ -143,10 +140,16 @@ export default function App() {
     for (const { file, handle, path } of list) {
       if (/(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini)$|(^|\/)\._/i.test(path)) continue;
       const buffer = await file.arrayBuffer();
-      let kind: FileKind = 'unknown';
-      if (EXCEL_RE.test(file.name)) try { kind = detectKind(readWorkbook(buffer, file.name)); } catch { /* reported in cleaning log */ }
-      added.push({ name: path || file.name, size: file.size, kind, handle, lastModified: file.lastModified, buffer });
+      added.push({ name: path || file.name, size: file.size, kind: 'unknown', handle, lastModified: file.lastModified, buffer });
     }
+    // report kind of each Excel file — read in a background worker so the page stays responsive
+    const xl = added.filter((f) => EXCEL_RE.test(f.name));
+    const kinds = await (detectKindsInWorker(xl.map((f) => ({ name: f.name, data: f.buffer })))?.catch(() => null) ?? Promise.resolve(null));
+    xl.forEach((f, i) => {
+      let kind: FileKind = kinds?.[i] ?? 'unknown';
+      if (!kinds) try { kind = detectKind(readWorkbook(f.buffer, f.name)); } catch { /* reported in cleaning log */ }
+      f.kind = kind;
+    });
     const pack = replaceAll || added.length > 3 || added.some((f) => /\.(zip|pdf)$/i.test(f.name));
     setFiles((cur) => {
       // a new file of the same kind replaces the old one (next company / new version); a folder / zip replaces everything
@@ -234,10 +237,13 @@ export default function App() {
     if (!files.length) { setBuiltDs(EMPTY_DS); return; }
     const many = files.length > 3 || files.some((f) => /\.(zip|pdf)$/i.test(f.name));
     if (many) setProgress('Reading files…');
-    buildDatasetFromFiles(files.map((f) => ({ path: f.name, data: f.buffer, size: f.size, forceKind: EXCEL_RE.test(f.name) && f.kind !== 'unknown' ? f.kind : undefined })), browserPdfLoader, {
-      passwords: inp.pdfPasswords,
-      onProgress: (d, t, path) => { if (!cancelled && many) setProgress(d < t ? `Reading ${d + 1} of ${t}: ${path.split('/').pop()}` : 'Calculating…'); },
-    }).then((d) => { if (!cancelled) { setBuiltDs(d); setProgress(''); } })
+    const packFiles = files.map((f) => ({ path: f.name, data: f.buffer, size: f.size, forceKind: EXCEL_RE.test(f.name) && f.kind !== 'unknown' ? f.kind : undefined }));
+    const onProgress = (d: number, t: number, path: string) => { if (!cancelled && many) setProgress(d < t ? `Reading ${d + 1} of ${t}: ${path.split('/').pop()}` : 'Calculating…'); };
+    const mainThread = () => buildDatasetFromFiles(packFiles, browserPdfLoader, { passwords: inp.pdfPasswords, onProgress });
+    // Excel-only loan files are read in a background worker (no UI freeze); PDFs need pdf.js on the main thread
+    const excelOnly = files.every((f) => EXCEL_RE.test(f.name));
+    if (!many) setProgress('Reading files…');
+    (excelOnly ? (buildInWorker(packFiles, inp.pdfPasswords, onProgress)?.catch(() => mainThread()) ?? mainThread()) : mainThread()).then((d) => { if (!cancelled) { setBuiltDs(d); setProgress(''); } })
       .catch((e) => { if (!cancelled) { setProgress(''); say(`Could not build the report: ${(e as Error).message}`); } });
     return () => { cancelled = true; };
   }, [files, pwKey, say]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -314,6 +320,7 @@ export default function App() {
     if (!hasData) return;
     setBusy('Building the credit analysis report…');
     try {
+      const [{ buildCreditReport }, { chartImage, toDataUrl }] = await Promise.all([import('./ui/report/creditReport'), import('./ui/report/chartImage')]);
       const pdf = await buildCreditReport(a, ds, effInp, { includeDisclaimer: !!effInp.pdfDisclaimer, minPages: 50, maxPages: 70, chartImage, logo: await toDataUrl(logoFull), onProgress: setBusy });
       pdf.save(`INGOVIQ_Credit_Analysis_Report_${a.company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.pdf`);
       say(`Credit analysis report downloaded (${pdf.getNumberOfPages()} pages)`);
@@ -321,8 +328,9 @@ export default function App() {
     setBusy('');
   };
 
-  const doPowerBi = () => {
+  const doPowerBi = async () => {
     try {
+      const { buildPowerBiProject } = await import('./ui/report/powerbi');
       const r = buildPowerBiProject(a, ds, effInp);
       const el = document.createElement('a');
       el.href = URL.createObjectURL(r.blob); el.download = r.fileName; document.body.appendChild(el); el.click(); el.remove();
@@ -430,8 +438,8 @@ export default function App() {
                   <div className="page-head"><div><h1>{page}</h1><div className="sub">{PAGE_SUB[page]} · {a.company}</div></div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       {fySel.length > 0 && <span className="small">Filtered: {fySel.join(', ')} <button className="btn small" onClick={() => setFySel([])}>Clear filter</button></span>}
-                      <button className="btn small" title={`Download only the ${page} report as PDF`} onClick={() => (page === 'SWOT' ? swotPdf(a.company, a.swot, buildEvidence(ds).items, !!effInp.pdfDisclaimer, DISCLAIMER) : doPdf(page))}>⤓ {page} PDF</button>
-                      <button className="btn small" title={`Download only the ${page} data as Excel`} onClick={() => (page === 'SWOT' ? swotExcel(a.company, a.swot, buildEvidence(ds).items) : exportExcel(a, ds, measures, hidden, page))}>⤓ {page} Excel</button>
+                      <button className="btn small" title={`Download only the ${page} report as PDF`} onClick={() => (page === 'SWOT' ? import('./ui/report/swotExport').then((m) => m.swotPdf(a.company, a.swot, buildEvidence(ds).items, !!effInp.pdfDisclaimer, DISCLAIMER)) : doPdf(page))}>⤓ {page} PDF</button>
+                      <button className="btn small" title={`Download only the ${page} data as Excel`} onClick={() => (page === 'SWOT' ? import('./ui/report/swotExport').then((m) => m.swotExcel(a.company, a.swot, buildEvidence(ds).items)) : exportExcel(a, ds, measures, hidden, page))}>⤓ {page} Excel</button>
                       <button className="btn small" title="Save this page as an image" onClick={() => pageRef.current && exportPng(pageRef.current, `${a.company}_${page}`)}>⤓ PNG</button>
                     </div></div>
                   {customize && (
