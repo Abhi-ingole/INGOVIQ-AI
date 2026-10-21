@@ -37,6 +37,11 @@ interface StoredFile extends LoadedFile { buffer: ArrayBuffer }
 type View = 'home' | 'report' | 'data' | 'model' | 'settings' | 'guide';
 const PAGES = ['Overview', 'Financials', 'Ratios', 'Working Capital', 'GST', 'Banking', 'Reconciliation', 'Ageing & Bureau', 'Risk & SWOT', 'SWOT', 'Credit Decision', 'Loan File', 'My Visuals'] as const;
 type Page = (typeof PAGES)[number];
+/* tab captions carry the section numbers of the 40-section report format */
+const TAB_LABEL: Partial<Record<Page, string>> = {
+  Overview: '1–2 Overview', Financials: '3 Financials', Ratios: '4 Ratios', 'Working Capital': '5 Working Capital', GST: '6–13 GST', Banking: '14–25 Banking',
+  Reconciliation: '26–28 Reconciliation', 'Ageing & Bureau': '29–30 Ageing & Bureau', 'Risk & SWOT': '31–35 Risk & Score', SWOT: '34 SWOT (evidence)', 'Credit Decision': '36–40 Credit Decision',
+};
 const PAGE_SUB: Record<Page, string> = {
   Overview: 'Sections 1–2 · Company & credit snapshot, executive AI credit summary',
   Financials: 'Part A · Section 3 · Year-wise statements and three-year comparison',
@@ -318,7 +323,7 @@ export default function App() {
 
   const doPowerBi = () => {
     try {
-      const r = buildPowerBiProject(a, ds);
+      const r = buildPowerBiProject(a, ds, effInp);
       const el = document.createElement('a');
       el.href = URL.createObjectURL(r.blob); el.download = r.fileName; document.body.appendChild(el); el.click(); el.remove();
       setTimeout(() => URL.revokeObjectURL(el.href), 10000);
@@ -493,7 +498,7 @@ export default function App() {
       </div>
 
       <div className="tabs">
-        {view === 'report' && hasData ? visiblePages.map((p) => <button key={p} className={`tab ${p === page ? 'on' : ''} ${hidden.includes(`page:${p}`) ? 'tab-hidden' : ''}`} onClick={() => setPage(p)}>{customize && <HideCtx.Provider value={hideFor(p)}><HideBox k={`page:${p}`} /></HideCtx.Provider>}{p}</button>) : <span className="small muted" style={{ paddingLeft: 8 }}>{view === 'home' ? 'Get data' : view === 'data' ? 'Data view' : view === 'model' ? 'Model' : view === 'settings' ? 'Settings' : 'Guide'}</span>}
+        {view === 'report' && hasData ? visiblePages.map((p) => <button key={p} className={`tab ${p === page ? 'on' : ''} ${hidden.includes(`page:${p}`) ? 'tab-hidden' : ''}`} onClick={() => setPage(p)}>{customize && <HideCtx.Provider value={hideFor(p)}><HideBox k={`page:${p}`} /></HideCtx.Provider>}{TAB_LABEL[p] || p}</button>) : <span className="small muted" style={{ paddingLeft: 8 }}>{view === 'home' ? 'Get data' : view === 'data' ? 'Data view' : view === 'model' ? 'Model' : view === 'settings' ? 'Settings' : 'Guide'}</span>}
         <span className="statusbar">{view === 'report' && hasData ? `Page ${visiblePages.indexOf(page) + 1} of ${visiblePages.length} · ` : ''}{files.length} file(s) · processed locally</span>
       </div>
 

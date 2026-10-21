@@ -46,12 +46,28 @@ export function Section({ num, title, children, right }: { num?: string; title: 
   );
 }
 
+/** dashboard-style icon for a KPI tile, picked from its label */
+function kpiIcon(label: string): [string, string] {
+  const l = label.toLowerCase();
+  if (/turnover|revenue|sales|bto/.test(l)) return ['₹', 'ic-blue'];
+  if (/profit|pat|ebitda|margin/.test(l)) return ['↗', 'ic-green'];
+  if (/net worth|equity|tnw/.test(l)) return ['◆', 'ic-violet'];
+  if (/debt|loan|borrow|tol/.test(l)) return ['⚖', 'ic-orange'];
+  if (/inflow|outflow|credit|deposit|bank|cash|trend|conduct/.test(l)) return ['⇄', 'ic-teal'];
+  if (/gst|return|filing/.test(l)) return ['▤', 'ic-blue'];
+  if (/score|risk|flag/.test(l)) return ['!', 'ic-red'];
+  if (/day|cycle|ageing/.test(l)) return ['◷', 'ic-teal'];
+  return ['●', 'ic-violet'];
+}
 export function Kpi({ label, value, delta, deltaGood, title }: { label: string; value: ReactNode; delta?: ReactNode; deltaGood?: boolean | null; title?: string }) {
   return (
-    <div className="kpi" title={title}>
-      <div className="label">{label}</div>
-      <div className="value">{value}</div>
-      {delta !== undefined && <div className={`delta ${deltaGood === true ? 'up' : deltaGood === false ? 'down' : ''}`}>{delta}</div>}
+    <div className="kpi kpi-icon" title={title}>
+      <span className={`kpi-ico ${kpiIcon(label)[1]}`} aria-hidden="true">{kpiIcon(label)[0]}</span>
+      <div className="kpi-body">
+        <div className="label">{label}</div>
+        <div className="value">{value}</div>
+        {delta !== undefined && <div className={`delta ${deltaGood === true ? 'up' : deltaGood === false ? 'down' : ''}`}>{deltaGood === true ? '▲ ' : deltaGood === false ? '▼ ' : ''}{delta}</div>}
+      </div>
     </div>
   );
 }

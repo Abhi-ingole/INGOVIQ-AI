@@ -188,6 +188,7 @@ export function parseFinancial(wb: Workbook, log: CleaningLog[]): FinancialData 
     charges: parseCharges(wb),
     gstFilings: parseEstablishmentFilings(wb),
     flags: parseFlags(wb),
+    associates: parseAssociates(wb),
   };
 }
 
@@ -273,6 +274,30 @@ function parseCharges(wb: Workbook) {
     if (out.length) return out;
   }
   return [];
+}
+
+/** Associates / group companies (holding, subsidiary, associate, JV, common directorship) — the sheet whose
+    first column is "Group Company Name" (or similar); flag tables that merely mention group companies are skipped */
+function parseAssociates(wb: Workbook) {
+  const NAME = /^(group company name|associate( company)? name|name of (the )?(associate|group company))$/i;
+  const out: { name: string; relationship: string }[] = [];
+  for (const s of wb.sheetOrder) {
+    const mx = wb.sheets[s];
+    for (let r = 0; r < Math.min(mx.length, 40); r++) {
+      const row = (mx[r] || []).map(str);
+      const first = row.findIndex((c) => c !== '');
+      if (first < 0 || !NAME.test(row[first])) continue;
+      const rc = row.findIndex((c) => /^relationship$/i.test(c));
+      for (let k = r + 1; k < mx.length; k++) {
+        const name = str(mx[k]?.[first]);
+        if (!name) { if (k > r + 1) break; continue; }
+        if (/^[-–\s]*$|^(go to index|index)$|has not made/i.test(name)) continue;
+        if (!out.some((o) => o.name.toLowerCase() === name.toLowerCase())) out.push({ name, relationship: rc >= 0 ? str(mx[k]?.[rc]) || 'Group company' : 'Group company' });
+      }
+      break;
+    }
+  }
+  return out;
 }
 
 function parseFlags(wb: Workbook) {

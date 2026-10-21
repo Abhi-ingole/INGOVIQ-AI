@@ -27,6 +27,7 @@ export interface FinancialData {
   charges: { id: string; holder: string; amount: number; created: string; satisfied: string; assets: string; rate: string }[];
   gstFilings: GstFiling[]; // establishment-level filing list from the company report
   flags: { category: string; event: string; colour: string }[];
+  associates?: { name: string; relationship: string }[]; // group / associate companies (common directorship)
 }
 
 /* ---------------- GST ---------------- */

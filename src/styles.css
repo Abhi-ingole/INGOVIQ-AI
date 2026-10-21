@@ -138,6 +138,13 @@ a { color: var(--brand-500); }
 .kpi .label { color: var(--text-2); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
 .kpi .value { font-size: 22px; font-weight: 650; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .kpi .delta { font-size: 12px; margin-top: 2px; color: var(--text-2); }
+.kpi.kpi-icon { display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 2px rgba(15, 23, 42, .06); }
+.kpi .kpi-body { min-width: 0; flex: 1; }
+.kpi.kpi-icon .value { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
+.kpi-ico { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; font-weight: 700; }
+.ic-blue { background: #e8f0fe; color: #1a56db; } .ic-green { background: #e6f6ee; color: #0f7a46; } .ic-violet { background: #f0eafd; color: #6d3fd1; }
+.ic-orange { background: #fdf0e3; color: #b85c00; } .ic-teal { background: #e3f6f7; color: #0b7a83; } .ic-red { background: #fde8e8; color: #c81e1e; }
+:root[data-theme="dark"] .kpi-ico { filter: saturate(1.2) brightness(.85); }
 .up { color: var(--good-ink); } .down { color: var(--critical-ink); }
 
 .chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 600; white-space: nowrap; border: 1px solid transparent; }

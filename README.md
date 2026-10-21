@@ -15,7 +15,7 @@ Drop three Excel reports — **Financial statements**, **GST analysis** and **Ba
    - All **21 core parameters** (EBIT, EBITDA, Net Profit, Operating Profit, Promoter Net Worth, DSCR, Current, Quick, Debt–Equity, Adjusted D/E, ICR, TOL/TNW, Net Profit to Sales, Debt/EBITDA, OCF/Interest, Retained Earnings/Equity, Debtor / Creditor / Stock periods, Working Capital Ratio, Drawing Power)
    - Working-capital cycle, MPBF and turnover-method gap
    - GST: sales vs purchases, buyer & supplier concentration (top 5 / top 10 / largest / HHI), exports, filing delays & late fee, state-wise, intra-group, GSTR-1 vs 3B, HSN (when provided)
-   - Banking: monthly trend, internal transfers, **adjusted business inflow**, cheque / ECS / NACH / EMI returns, penal charges, credit entries, BTO, party-wise flows, loan disbursals, cash deposits, **daily CC/OD utilisation**
+   - Banking: monthly trend, internal transfers (own accounts incl. CMS-A2A transfers, group / associate companies read from the company report, promoter accounts), loan and NBFC credits, **adjusted business inflow**, cheque / ECS / NACH / EMI returns, penal charges, credit entries, BTO, party-wise flows, loan disbursals, cash deposits, **daily CC/OD utilisation**
    - **Reconciliation**: Financial vs GST vs Banking by year and on matching months, plus party-wise (triangular) buyer and supplier matching
 3. **Builds the dashboard** — 11 report pages that follow the 40-section credit-analysis format, with an integrated credit score (13 dimensions), red flags, SWOT, funding capacity, product mapping and GO / CONDITIONAL GO / NO-GO recommendation.
 
@@ -75,7 +75,7 @@ SAMPLES=/path/to/excel/folder npm test
 
 **Evidence-based SWOT:** generated automatically; every point carries its metric, value, benchmark, source documents and report section; weaknesses and threats get a severity (Low / Medium / High) and a recommendation. Download as PDF or Excel.
 
-**Power BI:** *Power BI* in the ribbon downloads a Power BI Project (.pbip) with the reconciled data embedded in the model and a ready dashboard; unzip and open the .pbip in Power BI Desktop.
+**Power BI:** *Power BI* in the ribbon downloads a Power BI Project (.pbip) laid out exactly like the 40-section *Integrated Financial, GST, Banking & Credit Analysis Report*: 17 pages carrying sections 1–40 in the same order and with the same headings (snapshot, executive summary, 3-year financials, 21 ratios, working capital, GST 6–13, banking 14–25, reconciliation 26–28, ageing & bureau, red flags & SWOT, scorecard, funding, product mapping, recommendation, analyst remarks with the 18 questions), cards, charts (columns, lines, combo, waterfall, gauge, bars) and tables on every page, and the Section 40 disclaimer at the bottom of every page. The analysed data is embedded in the model; unzip and open the .pbip in Power BI Desktop.
 
 **Show / hide:** ribbon → *Show / hide* puts tick boxes on page tabs, section titles and visuals. Unticked items disappear from the dashboard, the PDF report, the Excel export (pages) and the HTML export.
 

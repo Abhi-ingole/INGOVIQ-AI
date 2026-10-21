@@ -79,7 +79,27 @@ function containsPerson(cp: string, person: string[]): boolean {
   return person.every((p) => tok.has(p));
 }
 
-export function classify(t: BankTxn, ctx: { companyTok: string[]; directors: string[][]; related: { tok: string[]; relationship: string }[]; overrides: Record<string, TxnClass> }): { cls: TxnClass; reason: string; counterparty: string } {
+/** letters/digits only, legal-form words removed: "New Modern Technomech Pvt. Ltd." -> "newmoderntechnomech" */
+export function coreName(s: string): string {
+  return s.toLowerCase().replace(/m\/s\.?/g, ' ').replace(/[^a-z0-9]+/g, '')
+    .replace(/(privatelimited|privatelimite|privatelimi|pvtltd|private|limited|pvt|ltd|llp|india)+$/g, '').replace(/(privatelimited|pvtltd)/g, '');
+}
+/** remitter / beneficiary names written in an RTGS / NEFT / IMPS narration */
+function narrationNames(desc: string): string[] {
+  const d = desc.replace(/\s+/g, ' ');
+  const m = d.match(/^(?:RTGS|NEFT)\s*(?:Cr|Dr|O\/W|I\/W)?-[A-Z0-9]{11}-([^-]+)-([^-]+)/i);
+  return m ? [m[1].trim(), m[2].trim()] : [];
+}
+/** same entity when one core name contains the other (min. 8 letters) — handles truncated / joined bank narrations */
+function sameEntity(a: string, b: string): boolean {
+  const x = coreName(a), y = coreName(b);
+  if (x.length < 8 || y.length < 8) return false;
+  return x.includes(y) || y.includes(x) || (x.length >= 12 && y.length >= 12 && x.slice(0, 12) === y.slice(0, 12));
+}
+/** credits from banks / NBFCs that are borrowings, not sales receipts */
+const LENDER_RE = /\b(capital services?|capitalservices|finance (ltd|limited|pvt|private|company)|financial services|finserv|fincorp|india credit|indiacredit|credit (ltd|limited|pvt|private)|housing finance|nbfc|leasing|clix|smfg|lendingkart|bajaj fin|tata capital|aditya birla capital|iifl|shriram fin|indifi|neogrowth|flexiloans|ugro|capital float)\b/i;
+
+export function classify(t: BankTxn, ctx: { companyTok: string[]; company?: string; directors: string[][]; related: { tok: string[]; relationship: string; name?: string }[]; overrides: Record<string, TxnClass> }): { cls: TxnClass; reason: string; counterparty: string } {
   const cp = counterpartyOf(t);
   const ov = ctx.overrides[cp.toLowerCase()];
   if (ov) return { cls: ov, reason: 'Manual classification', counterparty: cp };
@@ -89,14 +109,23 @@ export function classify(t: BankTxn, ctx: { companyTok: string[]; directors: str
   if (/loan disburs/.test(cat) || /loan disb/.test(desc)) return { cls: 'Loan Disbursal', reason: 'Loan disbursal credit', counterparty: cp };
   if (/internal/.test(cat)) return { cls: 'Internal / Self', reason: `Bank category "${t.category}"`, counterparty: cp };
   if (isSelf(cp, ctx.companyTok) || /fd creation|fixed deposit|sweep/.test(desc)) return { cls: 'Internal / Self', reason: 'Counterparty is the company itself (own account / FD)', counterparty: cp };
+  // own-account transfers that the bank narration shows only partly ("CMS-A2A …", party column holding the tail of the company name, RTGS remitter = company)
+  const co = ctx.company || '';
+  const coCore = coreName(co);
+  if (/^cms-a2a/i.test(t.description.trim()) && coCore && coreName(t.description).includes(coCore.slice(0, 10))) return { cls: 'Internal / Self', reason: 'Account-to-account (CMS-A2A) transfer in the company\'s own name', counterparty: cp };
+  if (coCore.length >= 12 && coreName(cp).length >= 10 && coCore.includes(coreName(cp))) return { cls: 'Internal / Self', reason: 'Counterparty name is part of the company\'s own name (own account)', counterparty: cp };
+  const nn = narrationNames(t.description);
+  if (t.credit > 0 && nn.length && co && sameEntity(nn[0], co)) return { cls: 'Internal / Self', reason: 'Remitter in the narration is the company itself (own account)', counterparty: nn[0] };
   for (const d of ctx.directors) if (containsPerson(cp, d)) return { cls: 'Promoter / Director', reason: `Matches director ${d.join(' ')}`, counterparty: cp };
+  const remitter = t.credit > 0 && nn.length ? nn[0] : t.debit > 0 && nn.length > 1 ? nn[1] : '';
   for (const r of ctx.related) {
-    if (r.tok.length && r.tok.slice(0, 2).every((x) => nameTokens(cp).includes(x))) {
-      return /director|promoter|kmp/i.test(r.relationship)
+    if ((r.tok.length && r.tok.slice(0, 2).every((x) => nameTokens(cp).includes(x))) || (r.name && (sameEntity(cp, r.name) || (remitter && sameEntity(remitter, r.name)) || (coreName(r.name).length >= 8 && coreName(t.description).includes(coreName(r.name)))))) {
+      return /director|promoter|kmp/i.test(r.relationship) && !/group company|common directorship|associate|subsidiary|holding/i.test(r.relationship)
         ? { cls: 'Promoter / Director', reason: `Related party (${r.relationship})`, counterparty: cp }
         : { cls: 'Group / Related', reason: `Related party (${r.relationship})`, counterparty: cp };
     }
   }
+  if (t.credit > 0 && (LENDER_RE.test(cp) || LENDER_RE.test(remitter))) return { cls: 'Loan Disbursal', reason: 'Credit from a bank / NBFC — borrowing, not a business receipt', counterparty: cp };
   if (t.credit > 0 && /interest (received|credit)|refund|dividend|insurance claim|subsidy/.test(cat + ' ' + desc)) return { cls: 'Non-Business', reason: 'Non-operating credit', counterparty: cp };
   return { cls: 'Business', reason: 'Trade / business transaction', counterparty: cp };
 }
@@ -105,10 +134,11 @@ export function analyseBanking(bd: BankingData, inp: ManualInputs, fin: Financia
   const company = fin?.company || bd.company;
   const companyTok = nameTokens(company).slice(0, 2);
   const directors = (fin?.directors || []).map((d) => nameTokens(d.name)).filter((x) => x.length >= 2);
-  const related = bd.relatedParties.map((r) => ({ tok: nameTokens(r.name), relationship: r.relationship }));
+  const relSrc = [...bd.relatedParties, ...(fin?.associates || []).map((x) => ({ name: x.name, relationship: /director|promoter|kmp/i.test(x.relationship) && !/common directorship/i.test(x.relationship) ? x.relationship : `Group company (${x.relationship || 'associate'})` }))];
+  const related = relSrc.filter((r, i, arr) => arr.findIndex((y) => coreName(y.name) === coreName(r.name)) === i).map((r) => ({ tok: nameTokens(r.name), relationship: r.relationship, name: r.name }));
   const overrides: Record<string, TxnClass> = {};
   for (const [k, v] of Object.entries(inp.partyClassOverrides || {})) overrides[k.toLowerCase()] = v;
-  const ctx = { companyTok, directors, related, overrides };
+  const ctx = { companyTok, company, directors, related, overrides };
 
   const txns: ClassifiedTxn[] = bd.txns.map((t) => ({ ...t, ...classify(t, ctx) }));
   const months = bd.months;
