@@ -45,7 +45,7 @@ export function LoanFile(ctx: PageCtx) {
           { key: 'path', label: 'File', wrap: true, sort: (r) => r.path, render: (r) => <><b>{r.path.split('/').pop()}</b><div className="small muted">{r.path.split('/').slice(0, -1).join(' / ')}</div></> },
           { key: 'type', label: 'Type', sort: (r) => r.type },
           { key: 'status', label: 'Status', sort: (r) => r.status, render: (r) => <Chip s={r.status} tone={STATUS_TONE[r.status]} /> },
-          { key: 'note', label: 'What INGOVIQ found', wrap: true },
+          { key: 'note', label: 'What INGOVIZ found', wrap: true },
           { key: 'size', label: 'Size', num: true, sort: (r) => r.size, render: (r) => `${(r.size / 1024).toFixed(0)} KB` },
         ]} />
       </div>

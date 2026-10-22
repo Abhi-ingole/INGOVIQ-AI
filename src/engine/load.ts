@@ -19,7 +19,7 @@ export function buildDataset(files: InputFile[]): Dataset {
       if (kind === 'financial') ds.financial = parseFinancial(wb, log);
       else if (kind === 'gst') ds.gst = parseGst(wb, log);
       else if (kind === 'banking') ds.banking = parseBanking(wb, log);
-      else log.push({ source: f.name, level: 'warn', message: 'Could not recognise this file. Use "Treat as…" to tell INGOVIQ what it is.' });
+      else log.push({ source: f.name, level: 'warn', message: 'Could not recognise this file. Use "Treat as…" to tell INGOVIZ what it is.' });
     } catch (e) {
       log.push({ source: f.name, level: 'warn', message: `Failed to read file: ${(e as Error).message}` });
     }

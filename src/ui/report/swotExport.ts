@@ -17,7 +17,7 @@ export function swotPdf(company: string, swot: SwotResult, evidence: EvidenceIte
   doc.text('AI SWOT ANALYSIS — evidence based', M, 16);
   doc.setFontSize(11); doc.setTextColor(31, 79, 209); doc.text(T(company), M, 23);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(90);
-  doc.text(T(`Generated ${new Date().toLocaleString('en-IN')} by INGOVIQ AI from: ${swot.generatedFrom.join(', ') || 'uploaded data'} · ${swot.counts.Strength} strengths · ${swot.counts.Weakness} weaknesses · ${swot.counts.Opportunity} opportunities · ${swot.counts.Threat} threats · ${swot.highRisks} high-severity risks`), M, 29);
+  doc.text(T(`Generated ${new Date().toLocaleString('en-IN')} by INGOVIZ AI from: ${swot.generatedFrom.join(', ') || 'uploaded data'} · ${swot.counts.Strength} strengths · ${swot.counts.Weakness} weaknesses · ${swot.counts.Opportunity} opportunities · ${swot.counts.Threat} threats · ${swot.highRisks} high-severity risks`), M, 29);
   // summary grid
   let y = 34;
   autoTable(doc, {
@@ -52,9 +52,9 @@ export function swotPdf(company: string, swot: SwotResult, evidence: EvidenceIte
   for (let i = 1; i <= n; i++) {
     doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(120);
     if (withDisclaimer && disclaimer) { doc.setFontSize(5.8); doc.text(doc.splitTextToSize(disclaimer, W - 2 * M), M, H - 14); doc.setFontSize(7.5); }
-    doc.text(T(`INGOVIQ AI · ${company} · SWOT`), M, H - 5); doc.text(`Page ${i} of ${n}`, W - M, H - 5, { align: 'right' });
+    doc.text(T(`INGOVIZ AI · ${company} · SWOT`), M, H - 5); doc.text(`Page ${i} of ${n}`, W - M, H - 5, { align: 'right' });
   }
-  doc.save(`INGOVIQ_SWOT_${fileSafe(company)}.pdf`);
+  doc.save(`INGOVIZ_SWOT_${fileSafe(company)}.pdf`);
 }
 
 export function swotExcel(company: string, swot: SwotResult, evidence: EvidenceItem[]) {
@@ -71,5 +71,5 @@ export function swotExcel(company: string, swot: SwotResult, evidence: EvidenceI
   const evs = XLSX.utils.aoa_to_sheet([['ID', 'File', 'Document type', 'What was read'], ...evidence.map((e) => [e.id, e.file, e.type, e.used])]);
   evs['!cols'] = [{ wch: 6 }, { wch: 80 }, { wch: 28 }, { wch: 40 }];
   XLSX.utils.book_append_sheet(wb, evs, 'Evidence');
-  XLSX.writeFile(wb, `INGOVIQ_SWOT_${fileSafe(company)}.xlsx`);
+  XLSX.writeFile(wb, `INGOVIZ_SWOT_${fileSafe(company)}.xlsx`);
 }

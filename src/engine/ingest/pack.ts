@@ -1,5 +1,5 @@
 /* Loan-file pack ingestion: a folder or zip with many documents → one Dataset.
-   Every file is classified, parsed if INGOVIQ understands it, and listed in the
+   Every file is classified, parsed if INGOVIZ understands it, and listed in the
    documents inventory with what happened to it (used / duplicate / scanned / needs password …). */
 import { unzipSync } from 'fflate';
 import type { Dataset, CleaningLog, GstData, GstParty, GstFiling, BankingData, BankTxn, BankAccount, FinancialData, FYMap, DocEntry, ExtraData, ManualInputs } from '../types';
@@ -43,7 +43,7 @@ export function expandZips(files: PackFile[]): PackFile[] {
   return out;
 }
 
-/** Guess a readable document type from the path alone (for files INGOVIQ does not parse). */
+/** Guess a readable document type from the path alone (for files INGOVIZ does not parse). */
 function typeFromPath(p: string): string {
   const s = p.toLowerCase();
   const rules: [RegExp, string][] = [
@@ -139,7 +139,7 @@ export async function buildDatasetFromFiles(input: PackFile[], loader: PdfLoader
           if (st.txns.length) { statements.push({ file: f.path, st }); doc.type = 'Bank statement'; doc.status = 'used'; doc.note = `${st.account.bank} ${st.account.account.slice(-4)} · ${st.txns.length} txns${st.balanceMismatches ? ` · ${st.balanceMismatches} balance breaks` : ''}`; }
           else { doc.note = 'No transaction table found'; }
         } else {
-          doc.status = 'not used'; doc.note = 'Kept for reference (no figures INGOVIQ uses)';
+          doc.status = 'not used'; doc.note = 'Kept for reference (no figures INGOVIZ uses)';
         }
       } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tif', 'tiff', 'heic', 'webp'].includes(e)) {
         doc.status = 'not used'; doc.note = 'Image (KYC / photo) – listed only';
@@ -211,7 +211,7 @@ function mergeStatements(statements: { file: string; st: ParsedStatement }[], co
     ...extra.cibil.filter((c) => c.kind === 'consumer' && c.name).map((c) => ({ name: c.name, relationship: 'Promoter (CIBIL)' })),
     ...extra.networth.filter((n) => n.name).map((n) => ({ name: n.name, relationship: 'Promoter (net-worth certificate)' })),
   ].filter((r) => nameTokens(r.name).length >= 2);
-  return { company, accounts, txns, months, summary: { Source: 'Bank statement PDFs (parsed by INGOVIQ)' }, flags: [], relatedParties };
+  return { company, accounts, txns, months, summary: { Source: 'Bank statement PDFs (parsed by INGOVIZ)' }, flags: [], relatedParties };
 }
 
 function gstFromReturns(extra: ExtraData, company: string, log: CleaningLog[]): GstData {
@@ -292,7 +292,7 @@ function addParties(g: GstData, extra: ExtraData, rate: number) {
   }
 }
 
-/** Inputs INGOVIQ can fill itself from the documents (user-typed values always win). */
+/** Inputs INGOVIZ can fill itself from the documents (user-typed values always win). */
 export function autoInputs(ds: Dataset): Partial<ManualInputs> {
   const x = ds.extra;
   if (!x) return {};

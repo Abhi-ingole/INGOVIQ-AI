@@ -4,7 +4,7 @@ import { Component, type ReactNode } from 'react';
 export class PageGuard extends Component<{ children: ReactNode; name: string }, { err: Error | null }> {
   state = { err: null as Error | null };
   static getDerivedStateFromError(err: Error) { return { err }; }
-  componentDidCatch(err: Error) { console.error(`INGOVIQ: "${this.props.name}" failed`, err); }
+  componentDidCatch(err: Error) { console.error(`INGOVIZ: "${this.props.name}" failed`, err); }
   componentDidUpdate(prev: { name: string }) { if (prev.name !== this.props.name && this.state.err) this.setState({ err: null }); }
   render() {
     if (!this.state.err) return this.props.children;

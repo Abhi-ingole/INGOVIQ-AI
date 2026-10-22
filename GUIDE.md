@@ -1,10 +1,10 @@
-# INGOVIQ AI — Step-by-step Guide (Marathi + English)
+# INGOVIZ AI — Step-by-step Guide (Marathi + English)
 
 ## Part 1 · Website live karne (ekdach karayche)
 
 1. GitHub var repo **INGOVIQ-AI** open kar.
 2. **Settings → Pages** madhe jaa. *Build and deployment → Source* madhe **GitHub Actions** select kar.
-3. **Actions** tab madhe "Deploy INGOVIQ AI to GitHub Pages" workflow green ✅ hoiparyant thamb (2–3 min). Green nasel tar **Run workflow** dabav.
+3. **Actions** tab madhe "Deploy INGOVIZ AI to GitHub Pages" workflow green ✅ hoiparyant thamb (2–3 min). Green nasel tar **Run workflow** dabav.
 4. Website link: **https://abhi-ingole.github.io/INGOVIQ-AI/**
    Pudhe code madhe kahi badal push kela ki website automatic update hote.
 
@@ -39,14 +39,14 @@
 16. **Data sources tick box (Filters pane):** ekhada source untick kela (e.g. Banking) tar to sagla report madhun vagalla jato; parat tick kela ki parat yeto. Financial year tick kela ki Overview, GST ani Banking charts tya varshapurte filter hotat.
 17. **📑 Credit report (PDF):** ribbon madhla **Credit report** button "Integrated Financial, GST, Banking & Credit Analysis Report" format (sections 1–40) madhe 50–70 pages cha searchable PDF banavto — contents page, pratyek table sobat **Evidence** (konti file / page / sheet row madhun figure ala), Annexure madhe Evidence Register, GSTR-3B return-wise data, bank statement coverage, Tally ledgers, formulas ani material bank transactions (pratyek entry chi file ani page). **📄 Dashboard PDF** screen jasa disto tasa PDF deto.
 18. **Disclaimer:** PDF madhe Disclaimer / Declaration by default nasto. Pahije asel tar **Settings → PDF downloads** madhe tick kar.
-19. **🤖 Ask INGOVIQ (AI assistant):** khali ujvya kopryatla button. English / Hinglish / Marathi madhe prashna vichar — e.g. "Top 5 buyers FY 2025-26", "GST filing late hai kya?", "kiti loan milel?", "May 2026 sales", party che nav. Uttar fakt upload kelelya data madhun yete, sobat source (E-number / file) disto; data nasel tar te sangto — andaja ne uttar det nahi. API key lagat nahi.
+19. **🤖 Ask INGOVIZ (AI assistant):** khali ujvya kopryatla button. English / Hinglish / Marathi madhe prashna vichar — e.g. "Top 5 buyers FY 2025-26", "GST filing late hai kya?", "kiti loan milel?", "May 2026 sales", party che nav. Uttar fakt upload kelelya data madhun yete, sobat source (E-number / file) disto; data nasel tar te sangto — andaja ne uttar det nahi. API key lagat nahi.
 20. **SWOT page:** files upload kelyavar SWOT automatic tayar hoto. Pratyek point sobat ratio / value / benchmark, data source (E-number) ani report section; Weakness ani Threat la severity (Low / Medium / High) ani 💡 AI recommendation. Severity filter. **⤓ SWOT PDF** ani **⤓ SWOT Excel** download.
 21. **📊 Power BI:** ribbon madhla button Power BI Project (.pbip) zip deto — reconciled data model madhech asto. Zip extract kar ani `.pbip` file double-click kar → Power BI Desktop madhe ready dashboard ughadto (Overview, Financials, GST, Banking, Reconciliation, Risk & SWOT, Evidence). Zip **Extract All** karun mag `.pbip` ughad (zip chya aat thet ughadu nako). Pages rikame disle tar `… (classic).pbip` ughad — tech data, junya report format madhe. Juna Power BI asel tar File → Options → Preview features → "Power BI Project (.pbip)" ani "Store reports using enhanced metadata format (PBIR)" on kar.
 22. **Navin company:** tichya files upload kar — same type chi juni file replace hote. Sagla clear karayla **Clear**.
 
 ## Part 3 · Accuracy kashi check karaychi
 
-- **Ratios page → "Source cross-check"** madhe uploaded report madhle ratios dakhavle aahet; INGOVIQ che numbers tyachyashi compare karta yetat.
+- **Ratios page → "Source cross-check"** madhe uploaded report madhle ratios dakhavle aahet; INGOVIZ che numbers tyachyashi compare karta yetat.
 - Pratyek measure cha formula ani DAX **Ratios** ani **Model** madhe disto.
 - **Data view → Cleaning log** madhe app ne kay detect / convert / skip kele te disto.
 - Sarangi Metal sample var 21/21 key numbers source files shi match zale (current ratio, quick ratio, D/E, debtor/creditor/stock days, ROE, bank credits/debits, returns, loans, cash, GST totals, buyer concentration, export %).

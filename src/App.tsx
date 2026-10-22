@@ -322,7 +322,7 @@ export default function App() {
     try {
       const [{ buildCreditReport }, { chartImage, toDataUrl }] = await Promise.all([import('./ui/report/creditReport'), import('./ui/report/chartImage')]);
       const pdf = await buildCreditReport(a, ds, effInp, { includeDisclaimer: !!effInp.pdfDisclaimer, minPages: 50, maxPages: 70, chartImage, logo: await toDataUrl(logoFull), onProgress: setBusy });
-      pdf.save(`INGOVIQ_Credit_Analysis_Report_${a.company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.pdf`);
+      pdf.save(`INGOVIZ_Credit_Analysis_Report_${a.company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.pdf`);
       say(`Credit analysis report downloaded (${pdf.getNumberOfPages()} pages)`);
     } catch (e) { say(`Report failed: ${(e as Error).message}`); console.error(e); }
     setBusy('');
@@ -377,7 +377,7 @@ export default function App() {
   return (
     <div className="app">
       <div className="titlebar">
-        <div className="brand"><img src={logoIcon} alt="" />INGOVIQ <span className="ai">AI</span></div>
+        <div className="brand" title="INGOVIZ AI by INGOVIQ AI"><img src={logoIcon} alt="INGOVIQ AI" />INGOVIZ <span className="ai">AI</span><span className="by">by INGOVIQ AI</span></div>
         <div className="doc">{hasData ? `${a.company}` : 'Untitled'} {snapshot && <span className="chip warn" style={{ margin: '0 6px' }} title="Data is embedded in this HTML file. Use Get data / Refresh to load newer Excel files.">Offline snapshot</span>}{lastRefresh && <span>· {snapshot ? 'data as of' : 'refreshed'} {lastRefresh.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}</div>
         {liveCapable && live && !needReconnect && <span className="small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="live-dot" /> Live</span>}
         <button className="tb-btn" onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light')} title="Theme">{theme === 'light' ? '☀ Light' : theme === 'dark' ? '☾ Dark' : '◐ Auto'}</button>

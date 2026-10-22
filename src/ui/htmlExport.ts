@@ -1,4 +1,4 @@
-/* "Export → Interactive HTML": one self-contained .html file = the full INGOVIQ app + the loaded
+/* "Export → Interactive HTML": one self-contained .html file = the full INGOVIZ app + the loaded
    Excel data + manual inputs, visuals and measures. Opens offline in any browser with every page,
    filter, chart switch and export working. "Get data / Refresh" inside it updates with newer Excel. */
 import type { ManualInputs, Dataset } from '../engine/types';
@@ -7,7 +7,7 @@ import type { CustomMeasure, CustomVisual } from './pages/Custom';
 
 export interface EmbeddedFile { name: string; size: number; kind: FileKind; lastModified: number; b64: string }
 export interface EmbeddedSnapshot {
-  app: 'INGOVIQ AI';
+  app: 'INGOVIZ AI' | 'INGOVIQ AI';
   version: 1 | 2;
   company: string;
   createdAt: string;
@@ -45,7 +45,7 @@ export function readEmbedded(): EmbeddedSnapshot | null {
   if (!el?.textContent) return null;
   try {
     const d = JSON.parse(el.textContent) as EmbeddedSnapshot;
-    return d.app === 'INGOVIQ AI' && Array.isArray(d.files) ? d : null;
+    return (d.app === 'INGOVIZ AI' || d.app === 'INGOVIQ AI') && Array.isArray(d.files) ? d : null; // files exported before the rename still open
   } catch { return null; }
 }
 
@@ -75,7 +75,7 @@ export async function exportHtml(
     html = html.slice(0, start) + html.slice(end + 9);
   }
   const snap: EmbeddedSnapshot = {
-    app: 'INGOVIQ AI', version: 2, company, createdAt: new Date().toISOString(), dataset,
+    app: 'INGOVIZ AI', version: 2, company, createdAt: new Date().toISOString(), dataset,
     // raw files are embedded too when small, so "Get data" inside the HTML can add to them
     files: files.reduce((s, f) => s + f.size, 0) > RAW_LIMIT ? [] : await Promise.all(files.map(async (f) => ({ name: f.name, size: f.size, kind: f.kind, lastModified: f.lastModified, b64: await toB64(f.buffer) }))),
     inputs, visuals, measures,
@@ -87,11 +87,11 @@ export async function exportHtml(
   const at = html.lastIndexOf('</body>');
   html = at >= 0 ? html.slice(0, at) + tag + '\n' + html.slice(at) : html + tag;
   const t0 = html.indexOf('<title>'), t1 = html.indexOf('</title>', t0);
-  if (t0 >= 0 && t1 > t0 && t0 < html.indexOf('<script')) html = html.slice(0, t0) + `<title>INGOVIQ AI — ${company.replace(/[<>&]/g, '')}` + html.slice(t1);
+  if (t0 >= 0 && t1 > t0 && t0 < html.indexOf('<script')) html = html.slice(0, t0) + `<title>INGOVIZ AI — ${company.replace(/[<>&]/g, '')}` + html.slice(t1);
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `INGOVIQ_Dashboard_${company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.html`;
+  a.download = `INGOVIZ_Dashboard_${company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.html`;
   document.body.appendChild(a);
   a.click();
   a.remove();

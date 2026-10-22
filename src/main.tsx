@@ -18,7 +18,7 @@ try { setTimeout(() => sessionStorage.removeItem('ingoviq.reloaded'), 10000); } 
 export class Guard extends Component<{ children: ReactNode }, { err: Error | null }> {
   state = { err: null as Error | null };
   static getDerivedStateFromError(err: Error) { return { err }; }
-  componentDidCatch(err: Error) { console.error('INGOVIQ crashed:', err); }
+  componentDidCatch(err: Error) { console.error('INGOVIZ crashed:', err); }
   reset = async () => {
     try { for (const k of Object.keys(localStorage)) if (k.startsWith('ingoviq.')) localStorage.removeItem(k); } catch { /* blocked */ }
     try { await new Promise((res) => { const r = indexedDB.deleteDatabase('ingoviq-ai'); r.onsuccess = r.onerror = r.onblocked = () => res(null); }); } catch { /* blocked */ }
@@ -28,7 +28,7 @@ export class Guard extends Component<{ children: ReactNode }, { err: Error | nul
     if (!this.state.err) return this.props.children;
     return (
       <div style={{ maxWidth: 720, margin: '60px auto', padding: 24, font: '15px system-ui, sans-serif', background: '#fff', border: '1px solid #ddd', borderRadius: 10 }}>
-        <h2 style={{ marginTop: 0 }}>INGOVIQ AI could not open</h2>
+        <h2 style={{ marginTop: 0 }}>INGOVIZ AI could not open</h2>
         <p>Something in the data saved in this browser stopped the dashboard from loading.</p>
         <pre style={{ whiteSpace: 'pre-wrap', background: '#f6f6f6', padding: 10, borderRadius: 6, fontSize: 12 }}>{String(this.state.err?.stack || this.state.err).slice(0, 1200)}</pre>
         <button onClick={() => location.reload()} style={{ padding: '8px 14px', marginRight: 8 }}>Try again</button>

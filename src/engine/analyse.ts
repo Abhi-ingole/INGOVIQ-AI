@@ -35,7 +35,7 @@ export function analyse(ds0: Dataset, inp: ManualInputs): Analysis {
 export function effectiveDataset(ds: Dataset, inp: ManualInputs): Dataset {
   // a financial file in which no financial-year columns could be found carries no figures
   let financial = ds.financial && ds.financial.fys.length ? ds.financial : null;
-  if (ds.financial && !ds.financial.fys.length && !ds.log.some((l) => l.source === 'Financials' && /no financial-year/.test(l.message))) ds.log.push({ source: 'Financials', level: 'warn', message: 'The financial file has no financial-year columns INGOVIQ could read — financial pages are skipped. Add the years in Data view if needed.' });
+  if (ds.financial && !ds.financial.fys.length && !ds.log.some((l) => l.source === 'Financials' && /no financial-year/.test(l.message))) ds.log.push({ source: 'Financials', level: 'warn', message: 'The financial file has no financial-year columns INGOVIZ could read — financial pages are skipped. Add the years in Data view if needed.' });
   const manual = (inp.manualFYs || []).filter((f) => /^FY \d{4}-\d{2}$/.test(f));
   if (manual.length) {
     const base: FinancialData = financial || (ds.financial ? { ...ds.financial, fys: [] } : null) || {

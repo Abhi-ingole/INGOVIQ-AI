@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "INGOVIQ AI - AI-Powered Business Intelligence Platform for credit, financial, GST and banking analysis",
+  "description": "INGOVIZ AI - AI-Powered Business Intelligence Platform for credit, financial, GST and banking analysis",
   "author": "Abhishek Ingole",
   "license": "MIT",
   "scripts": {

@@ -5,7 +5,7 @@ import { ask, EXAMPLES, type Answer } from '../engine/assistant';
 
 interface Msg { who: 'me' | 'bot'; text: string; ans?: Answer }
 
-/** "Ask INGOVIQ" — chat over the loaded report. Runs in the browser, no API key; answers only from the data. */
+/** "Ask INGOVIZ" — chat over the loaded report. Runs in the browser, no API key; answers only from the data. */
 export function Assistant({ a, ds, inp }: { a: Analysis; ds: Dataset; inp: ManualInputs }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -22,10 +22,10 @@ export function Assistant({ a, ds, inp }: { a: Analysis; ds: Dataset; inp: Manua
   };
   return (
     <>
-      <button className="ai-fab" onClick={() => setOpen(!open)} title="Ask questions about this report">{open ? '✕' : '🤖'} <span>Ask INGOVIQ</span></button>
+      <button className="ai-fab" onClick={() => setOpen(!open)} title="Ask questions about this report">{open ? '✕' : '🤖'} <span>Ask INGOVIZ</span></button>
       {open && (
-        <div className="ai-panel" role="dialog" aria-label="INGOVIQ assistant">
-          <div className="ai-head"><b>🤖 INGOVIQ Assistant</b><span className="small muted">answers from {a.company}'s data · English / Hinglish / Marathi</span></div>
+        <div className="ai-panel" role="dialog" aria-label="INGOVIZ assistant">
+          <div className="ai-head"><b>🤖 INGOVIZ Assistant</b><span className="small muted">answers from {a.company}'s data · English / Hinglish / Marathi</span></div>
           <div className="ai-body">
             {!msgs.length && (
               <div className="small">

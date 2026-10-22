@@ -54,7 +54,7 @@ export function exportExcel(a: Analysis, ds: Dataset, measures: CustomMeasure[],
   };
   const add = (name: string, rows: unknown[][]) => { if (wanted(name) && rows.length) XLSX.utils.book_append_sheet(wb, niceSheet(rows), name.slice(0, 31)); };
   const show = (_p: string) => true; // eslint-disable-line @typescript-eslint/no-unused-vars
-  add('Cover', [['INGOVIQ AI — Integrated Financial, GST, Banking & Credit Analysis'], ['Report', onlyPage || 'Complete report'], ['Company', a.company], ['Generated', new Date().toLocaleString('en-IN')], ['Overall AI credit score', a.risk.overall.score, a.risk.overall.risk], ['Decision', a.risk.decision.decision], [], ['Disclaimer', DISCLAIMER]]);
+  add('Cover', [['INGOVIZ AI — Integrated Financial, GST, Banking & Credit Analysis'], ['Report', onlyPage || 'Complete report'], ['Company', a.company], ['Generated', new Date().toLocaleString('en-IN')], ['Overall AI credit score', a.risk.overall.score, a.risk.overall.risk], ['Decision', a.risk.decision.decision], [], ['Disclaimer', DISCLAIMER]]);
   const snap = Object.entries(a.risk.snapshot);
   add('Executive Summary', [['Parameter', 'Assessment'], ...snap, [], ['Analyst note', a.risk.analystNote]]);
   const prof = { ...(ds.extra?.profile || {}), ...Object.fromEntries(Object.entries(ds.financial?.profile || {}).filter(([, v]) => v)) };
@@ -86,7 +86,7 @@ export function exportExcel(a: Analysis, ds: Dataset, measures: CustomMeasure[],
     add('Bank Monthly', [['Month', 'Inflow', 'Outflow', 'Net', 'Adjusted inflow', 'Closing', 'Credits', 'Debits', 'Cash', 'Inward returns', 'EMI', 'Interest', 'Loans'], ...b.monthly.map((m) => [m.month, m.inflow, m.outflow, m.net, m.adjustedInflow, m.closing, m.credits, m.debits, m.cash, m.inwardReturns, m.emi, m.interest, m.loans])]);
     add('Bank Adjusted Inflow', Object.entries(b.adjusted).map(([k, v]) => [k, v]));
     add('Bank Parties', [['Direction', 'Party', 'Amount', 'Share', 'Count', 'Class'], ...b.parties.inflow.map((p) => ['Inflow', p.party, p.amount, r2(p.share), p.count, p.cls]), ...b.parties.outflow.map((p) => ['Outflow', p.party, p.amount, r2(p.share), p.count, p.cls])]);
-    add('Bank Transactions', [['Date', 'Account', 'Narration', 'Category', 'Party', 'Debit', 'Credit', 'Balance', 'INGOVIQ class', 'Reason'], ...b.txns.map((t) => [t.date, t.account, t.description, t.category, t.counterparty, t.debit, t.credit, t.balance, t.cls, t.reason])]);
+    add('Bank Transactions', [['Date', 'Account', 'Narration', 'Category', 'Party', 'Debit', 'Credit', 'Balance', 'INGOVIZ class', 'Reason'], ...b.txns.map((t) => [t.date, t.account, t.description, t.category, t.counterparty, t.debit, t.credit, t.balance, t.cls, t.reason])]);
     add('Loans & Utilisation', [['Date', 'Type', 'Narration', 'Amount'], ...b.loans.map((l) => [l.date, l.type, l.description, l.amount]), [], ['Account', 'Limit', 'Avg util', 'Peak util', 'Days >90%', 'Overdrawn days', 'Class'], ...b.utilisation.map((u) => [u.account, u.limit, r2(u.avgUtil), r2(u.peakUtil), u.daysAbove90, u.overdrawnDays, u.classification])]);
   }
   const rc = a.recon;
@@ -100,7 +100,7 @@ export function exportExcel(a: Analysis, ds: Dataset, measures: CustomMeasure[],
   add('Credit Decision', [['Decision', d.decision], ['Recommended funding', d.recommendedFunding], ['Product', d.product], ['Tenure', d.tenure], ['Repayment capacity', d.repayment], ['Security', d.security], ['Collateral / FLDG', d.collateral], [], ['Funding capacity'], ...a.risk.funding.method.map((m) => [m]), [], ['Question', 'Answer'], ...a.risk.qa.map((q) => [q.q, q.a])]);
   const x = ds.extra;
   if (x && ds.docs?.length && show('Loan File')) {
-    add('Documents', [['Folder', 'File', 'Type', 'Status', 'What INGOVIQ found', 'Size KB'], ...ds.docs.map((d) => [d.path.split('/').slice(0, -1).join('/'), d.path.split('/').pop(), d.type, d.status, d.note, Math.round(d.size / 1024)])]);
+    add('Documents', [['Folder', 'File', 'Type', 'Status', 'What INGOVIZ found', 'Size KB'], ...ds.docs.map((d) => [d.path.split('/').slice(0, -1).join('/'), d.path.split('/').pop(), d.type, d.status, d.note, Math.round(d.size / 1024)])]);
     if (Object.keys(x.profile).length) add('Company Master', [['Field', 'Value'], ...Object.entries(x.profile), [], ['Director', 'Designation', 'Appointed'], ...x.directors.map((d) => [d.name, d.designation, d.appointed]), [], ['GSTIN', 'State', 'Legal name', 'Liability from'], ...x.gstCerts.map((g) => [g.gstin, g.state, g.legalName, g.regDate])]);
     if (x.statements.length) add('Bank Statements', [['File', 'Bank', 'Account', 'From', 'To', 'Transactions', 'Balance breaks'], ...x.statements.map((t) => [t.file.split('/').pop(), t.bank, t.account, t.from, t.to, t.txns, t.mismatches])]);
     if (x.gstr3b.length) add('GSTR-3B Returns', [['GSTIN', 'Period', 'FY', 'Taxable 3.1a', 'Zero-rated 3.1b', 'Nil/exempt 3.1c', 'RCM 3.1d', 'Non-GST 3.1e', 'Output tax', 'ITC available', 'Filed on', 'ARN'], ...[...x.gstr3b].sort((p, q) => p.gstin.localeCompare(q.gstin) || p.period.localeCompare(q.period)).map((r) => [r.gstin, r.period, r.fy, r.taxable, r.zeroRated, r.nilExempt, r.reverseCharge, r.nonGst, r.outputTax, r.itc, r.filedOn, r.arn])]);
@@ -110,7 +110,7 @@ export function exportExcel(a: Analysis, ds: Dataset, measures: CustomMeasure[],
     if (x.ledgerParties.length) add('Tally Parties', [['Party ledger', 'Sales', 'Purchases', 'Receipts', 'Payments', 'Closing (Dr +, Cr −)'], ...x.ledgerParties.map((p) => [p.name, Object.values(p.sales).reduce((u, v) => u + v, 0), Object.values(p.purchases).reduce((u, v) => u + v, 0), p.receipts, p.payments, p.closing])]);
   }
   add('Cleaning Log', [['Level', 'File', 'Message'], ...ds.log.map((l) => [l.level, l.source, l.message])]);
-  XLSX.writeFile(wb, `INGOVIQ_${onlyPage ? onlyPage.replace(/[^\w]+/g, '_') + '_' : ''}${a.company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  XLSX.writeFile(wb, `INGOVIZ_${onlyPage ? onlyPage.replace(/[^\w]+/g, '_') + '_' : ''}${a.company.replace(/[^\w]+/g, '_').slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 /** Capture each element as an A4-landscape PDF page (long sections continue onto further pages). Disclaimer footer on every page. */
@@ -126,12 +126,12 @@ export async function exportPdf(sections: HTMLElement[], company: string, onProg
     pdf.setTextColor(110);
     if (withDisclaimer) pdf.text(pdf.splitTextToSize(DISCLAIMER, W - margin * 2), margin, H - footerH + 3);
     pdf.setFontSize(7);
-    pdf.text(`INGOVIQ AI · ${company} · page ${pdf.getNumberOfPages()}`, W - margin, H - 3, { align: 'right' });
+    pdf.text(`INGOVIZ AI · ${company} · page ${pdf.getNumberOfPages()}`, W - margin, H - 3, { align: 'right' });
   };
   const header = (title: string) => {
     pdf.setFontSize(9);
     pdf.setTextColor(11, 27, 63);
-    pdf.text(`INGOVIQ AI — ${title}`, margin, margin + 3);
+    pdf.text(`INGOVIZ AI — ${title}`, margin, margin + 3);
   };
   const SCALE = 1.35;
   for (let i = 0; i < sections.length; i++) {
@@ -182,7 +182,7 @@ export async function exportPdf(sections: HTMLElement[], company: string, onProg
       c = e;
     }
   }
-  pdf.save(`INGOVIQ_${only ? only.replace(/[^\w]+/g, '_') : 'Credit_Report'}_${company.replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`);
+  pdf.save(`INGOVIZ_${only ? only.replace(/[^\w]+/g, '_') : 'Credit_Report'}_${company.replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`);
 }
 
 export async function exportPng(el: HTMLElement, name: string) {
@@ -196,11 +196,11 @@ export async function exportPng(el: HTMLElement, name: string) {
 
 /** Blank Excel to type audited figures into (for scanned statements). Upload it back with Get data. */
 export function exportFinancialTemplate(company: string, fys: string[]) {
-  const rows: unknown[][] = [['INGOVIQ Financial Input'], [`Company: ${company}`], ['Type amounts in ₹ (not lakhs / crores). Leave a cell empty if not applicable. Upload this file back with Get data.'], [], ['Line item', ...fys]];
+  const rows: unknown[][] = [['INGOVIZ Financial Input'], [`Company: ${company}`], ['Type amounts in ₹ (not lakhs / crores). Leave a cell empty if not applicable. Upload this file back with Get data.'], [], ['Line item', ...fys]];
   for (const label of Object.values(ITEM_LABELS)) rows.push([label, ...fys.map(() => null)]);
   const ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{ wch: 42 }, ...fys.map(() => ({ wch: 18 }))];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Financial Input');
-  XLSX.writeFile(wb, `INGOVIQ_Financial_Input_${company.replace(/[^\w]+/g, '_').slice(0, 30)}.xlsx`);
+  XLSX.writeFile(wb, `INGOVIZ_Financial_Input_${company.replace(/[^\w]+/g, '_').slice(0, 30)}.xlsx`);
 }

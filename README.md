@@ -1,13 +1,13 @@
-<p align="center"><img src="public/logo-full.png" alt="INGOVIQ AI" width="460"></p>
+<p align="center"><img src="public/logo-full.png" alt="INGOVIZ AI" width="460"></p>
 
-<h3 align="center">Intelligence in Every Insight.</h3>
+<h3 align="center">Turn Data Into Intelligence.</h3>
 <p align="center">AI-Powered Business Intelligence Platform — a Power BI Desktop–style web app for credit, financial, GST and banking analysis.<br>Created by <b>Abhishek Ingole</b></p>
 
 ---
 
 ## What it does
 
-Drop three Excel reports — **Financial statements**, **GST analysis** and **Banking analysis / bank statement** — and INGOVIQ AI:
+Drop three Excel reports — **Financial statements**, **GST analysis** and **Banking analysis / bank statement** — and INGOVIZ AI:
 
 1. **Recognises each file and cleans it automatically** (no Power Query): finds the right sheets, converts numbers stored as text (`2,75,000.00`), aligns financial years, skips duplicated account blocks, maps line items, and writes a cleaning log.
 2. **Calculates every credit parameter with fixed formulas** — same files, same answer, every time:
@@ -71,7 +71,7 @@ SAMPLES=/path/to/excel/folder npm test
   - KYC, images, scanned PDFs and other documents are listed in the **Loan File** page inventory with their status (used / scanned / needs password / duplicate).
   - Scanned audited statements cannot be read as text: add the years in **Data view → Financial line items** and type the figures, or download the **financial input template**, fill it and upload it.
 
-**Ask INGOVIQ:** a built-in assistant (no API key) that answers questions about the loaded report — in English, Hinglish or Marathi — from the analysed data only, with the evidence for each answer.
+**Ask INGOVIZ:** a built-in assistant (no API key) that answers questions about the loaded report — in English, Hinglish or Marathi — from the analysed data only, with the evidence for each answer.
 
 **Evidence-based SWOT:** generated automatically; every point carries its metric, value, benchmark, source documents and report section; weaknesses and threats get a severity (Low / Medium / High) and a recommendation. Download as PDF or Excel.
 

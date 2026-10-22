@@ -1,4 +1,4 @@
-/* INGOVIQ AI — Power BI–style workspace. Tokens first, dark mode selected (not inverted). */
+/* INGOVIZ AI — Power BI–style workspace. Tokens first, dark mode selected (not inverted). */
 :root {
   color-scheme: light;
   --brand-900: #0b1b3f;
@@ -59,6 +59,8 @@ a { color: var(--brand-500); }
 .titlebar .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: .3px; font-size: 15px; white-space: nowrap; }
 .titlebar .brand img { width: 26px; height: 26px; }
 .titlebar .brand .ai { color: #4fb3ff; }
+.titlebar .brand .by { font-weight: 500; font-size: 11px; letter-spacing: .2px; opacity: .7; margin-left: 2px; }
+@media (max-width: 720px) { .titlebar .brand .by { display: none; } }
 .titlebar .doc { opacity: .85; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .titlebar .tb-btn { background: transparent; border: 1px solid rgba(255,255,255,.25); color: #fff; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .titlebar .tb-btn:hover { background: rgba(255,255,255,.12); }
@@ -194,7 +196,14 @@ ul.clean { margin: 6px 0; padding-left: 18px; } ul.clean li { margin: 4px 0; lin
 /* ---------- home / get data ---------- */
 .home { max-width: 1040px; margin: 0 auto; padding: 24px 8px 40px; }
 .hero { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 22px; }
-.hero img { width: 360px; max-width: 100%; }
+.hero { justify-content: space-between; }
+.hero-product { min-width: 0; flex: 1 1 360px; }
+.hero-eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-2); }
+.hero-name { margin: 4px 0 2px; font-size: clamp(34px, 5vw, 52px); line-height: 1.05; font-weight: 800; letter-spacing: .5px; color: var(--text); text-wrap: balance; }
+.hero-name .ai { background: linear-gradient(90deg, #1a56db, #12b5f0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-line { margin-top: 4px; color: var(--text-2); font-size: 14.5px; }
+.hero-company { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 16px; border-radius: 12px; background: #ffffff; border: 1px solid var(--border); }
+.hero-company img { width: 260px; max-width: 100%; }
 .hero .tag { font-size: 18px; font-weight: 650; }
 .drop { border: 2px dashed var(--border-strong); border-radius: 12px; background: var(--surface); padding: 30px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
 .drop.over { border-color: var(--brand-500); background: var(--brand-100); }

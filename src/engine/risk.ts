@@ -229,7 +229,7 @@ export function assessRisk(fd: FinancialData | null, fin: FinAnalysis | null, _g
   if (inp.cibilScore === null || inp.cmrRank === null) documents.push('CIBIL / CMR report of company and promoters');
   if (!inp.ageing.some((a) => a.receivable || a.payable)) documents.push('Debtor and creditor ageing as on latest date');
   if (!bank || bank.months.length < 12) documents.push('Last 12 months bank statements of all operative accounts');
-  if (!fin) documents.push('Audited financial statements for the last 3 years (text PDFs or the INGOVIQ financial input template)');
+  if (!fin) documents.push('Audited financial statements for the last 3 years (text PDFs or the INGOVIZ financial input template)');
   if (!gst?.hsn.length) documents.push('HSN-wise sales summary (GSTR-1 Table 12)');
   if (!inp.promoterNetWorth) documents.push('Promoter net-worth statement');
 

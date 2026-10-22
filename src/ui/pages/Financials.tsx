@@ -187,7 +187,7 @@ export function Ratios(ctx: PageCtx) {
       {reported.length > 0 && (
         <>
           <Section title="Source cross-check — ratios as printed in the uploaded report" />
-          <div className="note small">These are read directly from the source file for comparison. Differences arise where the source uses operating EBITDA (excluding other income) or different debt definitions; INGOVIQ follows the prescribed formulas above.</div>
+          <div className="note small">These are read directly from the source file for comparison. Differences arise where the source uses operating EBITDA (excluding other income) or different debt definitions; INGOVIZ follows the prescribed formulas above.</div>
           <div className="tbl-wrap" style={{ maxHeight: 360 }}>
             <table className="tbl">
               <thead><tr><th>Ratio (source)</th>{Object.keys(reported[0].values).map((f) => <th key={f} className="num">{f}</th>)}</tr></thead>

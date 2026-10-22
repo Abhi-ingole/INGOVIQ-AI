@@ -84,11 +84,11 @@ export function DataView({ a, ds, inp, setInp }: PageCtx) {
           { key: 'debit', label: 'Debit', num: true, sort: (r) => r.debit, render: (r) => (r.debit ? fmtINR(r.debit, 2) : '') },
           { key: 'credit', label: 'Credit', num: true, sort: (r) => r.credit, render: (r) => (r.credit ? fmtINR(r.credit, 2) : '') },
           { key: 'balance', label: 'Balance', num: true, render: (r) => fmtINR(r.balance, 2) },
-          { key: 'cls', label: 'INGOVIQ class', render: (r) => <span className="small">{r.cls}</span> },
+          { key: 'cls', label: 'INGOVIZ class', render: (r) => <span className="small">{r.cls}</span> },
         ]} />
       )}
       {tab === 'Cleaning log' && (
-        <Table rows={ds.log} maxHeight={640} cols={[{ key: 'level', label: '', render: (r) => <Chip s={r.level === 'warn' ? 'Check' : 'Done'} tone={r.level === 'warn' ? 'warn' : 'good'} /> }, { key: 'source', label: 'File', wrap: true }, { key: 'message', label: 'What INGOVIQ did', wrap: true }]} />
+        <Table rows={ds.log} maxHeight={640} cols={[{ key: 'level', label: '', render: (r) => <Chip s={r.level === 'warn' ? 'Check' : 'Done'} tone={r.level === 'warn' ? 'warn' : 'good'} /> }, { key: 'source', label: 'File', wrap: true }, { key: 'message', label: 'What INGOVIZ did', wrap: true }]} />
       )}
     </>
   );

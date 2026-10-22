@@ -1,4 +1,4 @@
-name: Deploy INGOVIQ AI to GitHub Pages
+name: Deploy INGOVIZ AI to GitHub Pages
 
 on:
   push:

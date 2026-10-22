@@ -1,4 +1,4 @@
-/* INGOVIQ Assistant — answers questions about the loaded report from the analysed data only.
+/* INGOVIZ Assistant — answers questions about the loaded report from the analysed data only.
    It runs in the browser without any API key: questions are matched to intents (English, Hindi /
    Marathi in Roman script) and every answer quotes the figures with their evidence. When the data
    does not contain the answer, it says so instead of guessing. */

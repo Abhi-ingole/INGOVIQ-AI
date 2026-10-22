@@ -153,7 +153,7 @@ export function Decision(ctx: PageCtx) {
       <Section num="39" title="Final credit analyst remarks" />
       <div className="card"><p style={{ margin: 0, lineHeight: 1.6 }}>{risk.analystNote}</p></div>
       <div style={{ marginTop: 10 }}>
-        <Table rows={risk.qa} cols={[{ key: 'n', label: '#', render: (x) => risk.qa.indexOf(x) + 1, width: 30 }, { key: 'q', label: 'Question', render: (x) => <b>{x.q}</b>, wrap: true }, { key: 'a', label: 'INGOVIQ answer', wrap: true }]} />
+        <Table rows={risk.qa} cols={[{ key: 'n', label: '#', render: (x) => risk.qa.indexOf(x) + 1, width: 30 }, { key: 'q', label: 'Question', render: (x) => <b>{x.q}</b>, wrap: true }, { key: 'a', label: 'INGOVIZ answer', wrap: true }]} />
       </div>
       <Section num="40" title="Report disclaimer / declaration" />
       <DecisionVisuals {...ctx} />

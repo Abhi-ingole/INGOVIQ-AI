@@ -21,11 +21,16 @@ export function Home({ files, onFiles, onDropItems, onPick, onPickFolder, onClea
   return (
     <div className="home">
       <div className="hero">
-        <img src={logoFull} alt="INGOVIQ AI" />
-        <div>
-          <div className="tag">Intelligence in Every Insight.</div>
-          <div className="muted">AI-Powered Business Intelligence Platform — credit, financial, GST & banking analysis</div>
-          <div className="small muted" style={{ marginTop: 4 }}>Created by Abhishek Ingole</div>
+        <div className="hero-product">
+          <div className="hero-eyebrow">AI-Powered Business Intelligence Platform</div>
+          <h1 className="hero-name">INGOVIZ <span className="ai">AI</span></h1>
+          <div className="tag">Turn Data Into Intelligence.</div>
+          <div className="hero-line">Create Dashboards. Discover Insights. Make Smarter Decisions.</div>
+          <div className="small muted" style={{ marginTop: 6 }}>Credit, financial, GST &amp; banking analysis · Created by Abhishek Ingole</div>
+        </div>
+        <div className="hero-company">
+          <span className="small muted">A product of</span>
+          <img src={logoFull} alt="INGOVIQ AI" />
         </div>
       </div>
       <div className={`drop ${over ? 'over' : ''}`}
@@ -38,7 +43,7 @@ export function Home({ files, onFiles, onDropItems, onPick, onPickFolder, onClea
         onClick={() => (supportsLive ? onPick() : input.current?.click())}>
         <div style={{ fontSize: 34 }}>📥</div>
         <h2>Get data — drop a loan-file folder, a zip or individual files here</h2>
-        <div className="muted">Analysis reports (Financial · GST · Banking Excel) <b>or</b> the raw loan file: bank-statement PDFs, GSTR-3B PDFs, CIBIL / CMR, net-worth certificates, MCA data, Tally ledgers, ageing, loan obligation sheet, KYC. INGOVIQ reads every file and builds the full report.</div>
+        <div className="muted">Analysis reports (Financial · GST · Banking Excel) <b>or</b> the raw loan file: bank-statement PDFs, GSTR-3B PDFs, CIBIL / CMR, net-worth certificates, MCA data, Tally ledgers, ageing, loan obligation sheet, KYC. INGOVIZ reads every file and builds the full report.</div>
         <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button className="btn primary" onClick={(e) => { e.stopPropagation(); onPickFolder(); }}>🗂 Upload folder</button>
           <button className="btn primary" onClick={(e) => { e.stopPropagation(); input.current?.click(); }}>🗜 Upload zip / files</button>
@@ -90,9 +95,9 @@ export function Home({ files, onFiles, onDropItems, onPick, onPickFolder, onClea
 export function Guide() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      <div className="page-head"><div><h1>Step-by-step guide</h1><div className="sub">How to use INGOVIQ AI like Power BI Desktop — without Power Query.</div></div></div>
+      <div className="page-head"><div><h1>Step-by-step guide</h1><div className="sub">How to use INGOVIZ AI like Power BI Desktop — without Power Query.</div></div></div>
       <div className="steps">
-        <div><h4>Get data</h4>Click <b>Get data</b> (ribbon) or drop the Excel files on the start page: Financial report, GST analysis report and Banking analysis report. INGOVIQ recognises each file automatically. If a file is not recognised, use <b>Treat as…</b> next to it.</div>
+        <div><h4>Get data</h4>Click <b>Get data</b> (ribbon) or drop the Excel files on the start page: Financial report, GST analysis report and Banking analysis report. INGOVIZ recognises each file automatically. If a file is not recognised, use <b>Treat as…</b> next to it.</div>
         <div><h4>Automatic cleaning</h4>Open <b>Data view</b> (left rail, ▦) to see the cleaned tables and the <b>Cleaning log</b> — what was detected, converted and skipped. If any financial value needs correction, type it in the override column; every page recalculates.</div>
         <div><h4>Read the report pages</h4>Use the page tabs at the bottom: Overview → Financials → Ratios → Working Capital → GST → Banking → Reconciliation → Ageing & Bureau → Risk & SWOT → Credit Decision. Section numbers match the credit-analysis format (1–40).</div>
         <div><h4>Filter like Power BI</h4>Use the <b>Filters</b> pane on the right to choose financial years. Click any year bar in a chart to filter by it. On GST and Banking pages use the year / month buttons.</div>

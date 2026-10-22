@@ -204,7 +204,7 @@ export function buildPowerBiProject(a: Analysis, ds: Dataset, inp: ManualInputs 
   if (fin) { num('MPBF', fin.wcAssessment.mpbf); num('Additional WC', fin.wcAssessment.additionalWC); }
   txt('Bureau Risk', risk.snapshot['CIBIL/CMR Conduct'] || 'Not provided');
   num('Items Scored', risk.overall.covered, '0');
-  add({ name: 'KPI', cols: [['Item', 'text']], rows: [['INGOVIQ AI']], measures: kpi.map(([nm, e, f]) => [nm, e, f]) });
+  add({ name: 'KPI', cols: [['Item', 'text']], rows: [['INGOVIZ AI']], measures: kpi.map(([nm, e, f]) => [nm, e, f]) });
 
   /* ---------- tables per section ---------- */
   add({ name: 'S01 Snapshot', cols: [['No', 'number', '0'], ['Particular', 'text'], ['Details', 'text']], rows: companySnapshotRows(a, ds, inp).map(([k, v], i) => [i + 1, k, v]) });
@@ -566,7 +566,7 @@ export function buildPowerBiProject(a: Analysis, ds: Dataset, inp: ManualInputs 
     resourcePackages: [{ resourcePackage: { disabled: false, items: [{ name: 'CY24SU10', path: 'BaseThemes/CY24SU10.json', type: 202 }], name: 'SharedResources', type: 2 } }],
     sections: pages.map((p, i) => ({ config: '{}', displayName: p.displayName, displayOption: 2, filters: '[]', height: p.height, name: p.name, ordinal: i, visualContainers: p.visuals.map(legacyContainer), width: W })),
   };
-  const base = `INGOVIQ_${a.company.replace(/[^\w]+/g, '_').slice(0, 30)}`;
+  const base = `INGOVIZ_${a.company.replace(/[^\w]+/g, '_').slice(0, 30)}`;
   const j = (o: unknown) => strToU8(JSON.stringify(o, null, 2));
   const R = `${base}/${base}.Report`, L = `${base}/${base} (classic).Report`;
   const files: Record<string, Uint8Array> = {
@@ -583,7 +583,7 @@ export function buildPowerBiProject(a: Analysis, ds: Dataset, inp: ManualInputs 
     [`${base}/${base}.SemanticModel/definition.pbism`]: j({ version: '1.0', settings: {} }),
     [`${base}/${base}.SemanticModel/model.bim`]: j(modelBim(tables)),
     [`${base}/README.txt`]: strToU8([
-      `INGOVIQ AI — Integrated Financial, GST, Banking & Credit Analysis Report for ${a.company}`, '',
+      `INGOVIZ AI — Integrated Financial, GST, Banking & Credit Analysis Report for ${a.company}`, '',
       'How to open:', '1. Extract (unzip) this folder on a Windows PC with Power BI Desktop (right-click → Extract All; do not open from inside the zip).',
       '2. Power BI Desktop → File → Options and settings → Options → Preview features: tick "Power BI Project (.pbip) save option" and "Store reports using enhanced metadata format (PBIR)". Restart.',
       `3. Double-click ${base}.pbip. If the pages are empty in your Power BI version, open "${base} (classic).pbip" instead — same data.`,

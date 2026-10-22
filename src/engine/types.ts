@@ -1,4 +1,4 @@
-// Core data model for INGOVIQ AI. Everything the dashboard shows is derived
+// Core data model for INGOVIZ AI. Everything the dashboard shows is derived
 // from these cleaned structures by deterministic code (no AI guesswork).
 
 export type Matrix = (string | number | boolean | Date | null)[][];

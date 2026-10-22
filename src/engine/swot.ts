@@ -77,7 +77,7 @@ export function buildSwot(a: Analysis, ds: Dataset, inp: ManualInputs): SwotResu
     if (nwT && nwT.trend.startsWith('Consistent growth')) add({ type: 'Strength', title: 'Growing net worth', detail: `Net worth up to ${fmtCr(v('networth'))} through retained earnings.`, metric: 'Net worth', value: fmtCr(v('networth')), benchmark: 'rising', source: finSrc, section: '3', severity: 'Low', recommendation: '' });
   } else {
     const scanned = (ds.docs || []).some((d) => d.status === 'scanned' && /financial|itr/i.test(d.type));
-    add({ type: 'Weakness', title: 'Audited financials not analysed', detail: scanned ? 'The audited statements in the file are scanned images, so profitability, leverage and liquidity could not be measured.' : 'No audited financial statements were provided.', metric: 'Financial statements', value: 'not available', benchmark: 'last 3 years audited', source: ev.ref(/financial|itr/i, 'documents list'), section: '3–5', severity: 'High', recommendation: 'Obtain text PDFs / Excel of the last 3 audited years (or fill the INGOVIQ financial input template) before credit approval.' });
+    add({ type: 'Weakness', title: 'Audited financials not analysed', detail: scanned ? 'The audited statements in the file are scanned images, so profitability, leverage and liquidity could not be measured.' : 'No audited financial statements were provided.', metric: 'Financial statements', value: 'not available', benchmark: 'last 3 years audited', source: ev.ref(/financial|itr/i, 'documents list'), section: '3–5', severity: 'High', recommendation: 'Obtain text PDFs / Excel of the last 3 audited years (or fill the INGOVIZ financial input template) before credit approval.' });
   }
 
   /* ---------------- GST ---------------- */

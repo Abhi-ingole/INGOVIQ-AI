@@ -3,7 +3,7 @@
    - LoanBazaar "MOM" sales / purchase bills             → top parties month-on-month
    - Invoice ageing (debtors / creditors)                → outstanding ageing buckets + collection days
    - Loan obligation sheet                               → existing loans, EMI
-   - INGOVIQ financial input template                     → FinancialData (when audited statements are scanned) */
+   - INGOVIZ financial input template                     → FinancialData (when audited statements are scanned) */
 import type { Workbook, Matrix, FinancialData, CleaningLog, FYMap } from '../types';
 import { num, str, parseDate, normFY, sortFYs, isoDate } from '../utils';
 import { ITEM_LABELS } from '../parseFinancial';
@@ -23,7 +23,7 @@ export function xlDate(v: unknown): string | null {
 export function detectExcelFormat(wb: Workbook): ExcelFormat {
   const all = wb.sheetOrder.map((s) => head(wb.sheets[s], 14)).join('\n');
   const name = wb.fileName.toLowerCase();
-  if (/ingoviq financial input/.test(all)) return 'financial-template';
+  if (/ingovi[qz] financial input/.test(all)) return 'financial-template';
   if (/ledger vouchers/i.test(wb.sheetOrder.join(' ')) || (/ledger:/.test(all) && /vch type/.test(all))) return 'tally-ledger';
   if (/bills \(amt/.test(all)) return /purchase/.test(name) ? 'mom-purchase' : /sale/.test(name) ? 'mom-sales' : 'mom-sales';
   if (/invoice number/.test(all) && /ageing/.test(all)) return /payment date|payment amount/.test(all) || /cred/.test(name) ? 'ageing-creditors' : 'ageing-debtors';
@@ -186,6 +186,6 @@ export function parseFinancialTemplate(wb: Workbook, log: CleaningLog[]): Financ
   }
   const company = str(mx.slice(0, hi).flat().find((c) => /^company\s*:/i.test(str(c)))).replace(/^company\s*:\s*/i, '') || str(mx[1]?.[1]);
   const fys = sortFYs(fyCols.map(([, f]) => f).filter((f) => Object.values(items).some((m) => m[f] !== undefined)));
-  log.push({ source: wb.fileName, level: 'info', message: `INGOVIQ financial input template: ${Object.keys(items).length} line items for ${fys.join(', ') || 'no years'}.` });
+  log.push({ source: wb.fileName, level: 'info', message: `INGOVIZ financial input template: ${Object.keys(items).length} line items for ${fys.join(', ') || 'no years'}.` });
   return { company, fys, items, rawRows, profile: {}, directors: [], charges: [], gstFilings: [], flags: [] };
 }
