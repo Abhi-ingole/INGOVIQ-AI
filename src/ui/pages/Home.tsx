@@ -32,6 +32,7 @@ export function Home({ files, onFiles, onDropItems, onPick, onPickFolder, onClea
         <div className="hero-company">
           <span className="small muted">A product of</span>
           <img src={logoFull} alt="INGOVIQ" />
+          <a className="small" href="mailto:ingoviqai@gmail.com">✉ ingoviqai@gmail.com</a>
         </div>
       </div>
       <div className={`drop ${over ? 'over' : ''}`}

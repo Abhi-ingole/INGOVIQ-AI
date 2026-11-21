@@ -67,7 +67,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5); doc.setTextColor(...GREY);
       if (i > 1) {
-        doc.text(T(`INGOVIZ AI · ${a.company} · Integrated Financial, GST, Banking & Credit Analysis Report`), M, 8);
+        doc.text(T(`INGOVIQ Credit · ${a.company} · Integrated Financial, GST, Banking & Credit Analysis Report`), M, 8);
         doc.setDrawColor(220); doc.line(M, 9.5, W - M, 9.5);
       }
       if (opt.includeDisclaimer) {
@@ -76,7 +76,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
       }
       doc.setFontSize(7.5);
       doc.text(`Page ${i} of ${n}`, W - M, H - 7, { align: 'right' });
-      doc.text(T(`Generated ${new Date().toLocaleString('en-IN')} · INGOVIZ AI`), M, H - 7);
+      doc.text(T(`Generated ${new Date().toLocaleString('en-IN')} · INGOVIQ Credit · ingoviqai@gmail.com`), M, H - 7);
     }
   };
   const newPage = () => { doc.addPage(); y = 16; };
@@ -165,7 +165,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GREY);
   doc.text(T(`${risk.overall.risk} risk · based on ${risk.overall.covered} of ${risk.scores.length} scorecard dimensions`), M + 5, cy + 34);
   doc.setFontSize(8.5); doc.setTextColor(60);
-  doc.text(T(`Prepared with INGOVIZ AI — Turn Data Into Intelligence · ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`), M, H - 30);
+  doc.text(T(`Prepared with INGOVIQ Credit — Data In. Decisions Out. · ingoviqai@gmail.com · ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`), M, H - 30);
   doc.text('Every figure is traceable: see the Evidence column and the Evidence Register (Annexure A).', M, H - 25);
 
   // contents page (filled at the end)
