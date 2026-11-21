@@ -1,4 +1,5 @@
 import logoFull from '../../assets/logo-full.png';
+import creditIcon from '../../assets/logo-icon.png';
 import { useRef, useState } from 'react';
 import type { FileKind } from '../../engine/workbook';
 import type { DocEntry } from '../../engine/types';
@@ -23,14 +24,14 @@ export function Home({ files, onFiles, onDropItems, onPick, onPickFolder, onClea
       <div className="hero">
         <div className="hero-product">
           <div className="hero-eyebrow">AI-Powered Business Intelligence Platform</div>
-          <h1 className="hero-name">INGOVIZ <span className="ai">AI</span></h1>
-          <div className="tag">Turn Data Into Intelligence.</div>
+          <h1 className="hero-name"><img className="hero-icon" src={creditIcon} alt="" />INGOVIQ <span className="ai">Credit</span></h1>
+          <div className="tag">Data In. Decisions Out.</div>
           <div className="hero-line">Create Dashboards. Discover Insights. Make Smarter Decisions.</div>
           <div className="small muted" style={{ marginTop: 6 }}>Credit, financial, GST &amp; banking analysis · Created by Abhishek Ingole</div>
         </div>
         <div className="hero-company">
           <span className="small muted">A product of</span>
-          <img src={logoFull} alt="INGOVIQ AI" />
+          <img src={logoFull} alt="INGOVIQ" />
         </div>
       </div>
       <div className={`drop ${over ? 'over' : ''}`}

@@ -35,8 +35,8 @@ const xx = (v: number | null | undefined) => T(fmtX(v));
 const unit = (v: number | null | undefined, u: string) => T(fmtUnit(v, u));
 const shortName = (p: string) => p.split('/').pop() || p;
 
-const NAVY: [number, number, number] = [11, 27, 63];
-const BRAND: [number, number, number] = [31, 79, 209];
+const NAVY: [number, number, number] = [17, 17, 17];
+const BRAND: [number, number, number] = [201, 74, 11];
 const GREY: [number, number, number] = [105, 112, 125];
 
 export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInputs, opt: ReportOptions): Promise<jsPDF> {
@@ -116,7 +116,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
       startY: y, margin: { left: M, right: M, top: 14, bottom: H - bottom + 2 },
       head: [head.map(T)], body: body.map((r) => r.map((c) => (typeof c === 'number' ? T(c.toLocaleString('en-IN')) : T(c)))) as RowInput[],
       styles: { font: 'helvetica', fontSize: 7.6, cellPadding: 1.4, overflow: 'linebreak', lineColor: [225, 228, 235], lineWidth: 0.1, textColor: [30, 33, 40] },
-      headStyles: { fillColor: [236, 241, 252], textColor: NAVY, fontStyle: 'bold', fontSize: 7.6 },
+      headStyles: { fillColor: [255, 238, 226], textColor: NAVY, fontStyle: 'bold', fontSize: 7.6 },
       alternateRowStyles: { fillColor: [250, 251, 253] },
       columnStyles: colStyles, theme: 'grid', rowPageBreak: 'avoid',
       ...o,
@@ -143,7 +143,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
 
   /* ================= COVER ================= */
   say('Writing cover and contents…');
-  if (opt.logo) { try { doc.addImage(opt.logo, 'PNG', M, 22, 90, 32); } catch { /* logo optional */ } }
+  if (opt.logo) { try { doc.addImage(opt.logo, 'PNG', M, 22, 90, 20.4); } catch { /* logo optional */ } }
   doc.setTextColor(...NAVY); doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
   doc.text(doc.splitTextToSize('INTEGRATED FINANCIAL, GST, BANKING & CREDIT ANALYSIS REPORT', W - 2 * M), M, 74);
   doc.setFontSize(15); doc.setTextColor(...BRAND); doc.text(T(a.company), M, 96);
@@ -156,7 +156,7 @@ export async function buildCreditReport(a: Analysis, ds: Dataset, inp: ManualInp
     `Documents analysed: ${docs.length} (${docs.filter((d) => d.status === 'used').length} used as evidence)`,
   ];
   let cy = 106; for (const c of cov) { for (const l of doc.splitTextToSize(T(c), W - 2 * M)) { doc.text(l, M, cy); cy += 5; } }
-  doc.setFillColor(244, 246, 251); doc.roundedRect(M, cy + 6, W - 2 * M, 34, 2, 2, 'F');
+  doc.setFillColor(255, 244, 236); doc.roundedRect(M, cy + 6, W - 2 * M, 34, 2, 2, 'F');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...NAVY);
   doc.text('Overall AI Credit Score', M + 5, cy + 15); doc.text('Recommendation', M + 70, cy + 15); doc.text('Indicative funding', M + 130, cy + 15);
   doc.setFontSize(17); doc.setTextColor(...BRAND);

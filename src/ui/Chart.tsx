@@ -19,7 +19,7 @@ export function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 export function seriesColor(slot: number): string {
-  return cssVar(`--s${(slot % 8) + 1}`) || '#2a78d6';
+  return cssVar(`--s${(slot % 8) + 1}`) || '#E8590C';
 }
 
 export function fmtVal(v: number | null | undefined, unit: ValUnit, compact = false): string {

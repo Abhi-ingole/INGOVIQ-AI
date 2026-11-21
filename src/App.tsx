@@ -377,7 +377,7 @@ export default function App() {
   return (
     <div className="app">
       <div className="titlebar">
-        <div className="brand" title="INGOVIZ AI by INGOVIQ AI"><img src={logoIcon} alt="INGOVIQ AI" />INGOVIZ <span className="ai">AI</span><span className="by">by INGOVIQ AI</span></div>
+        <div className="brand" title="INGOVIQ Credit — Data In. Decisions Out."><img src={logoIcon} alt="INGOVIQ Credit" />INGOVIQ <span className="ai">Credit</span><span className="by">Data In. Decisions Out.</span></div>
         <div className="doc">{hasData ? `${a.company}` : 'Untitled'} {snapshot && <span className="chip warn" style={{ margin: '0 6px' }} title="Data is embedded in this HTML file. Use Get data / Refresh to load newer Excel files.">Offline snapshot</span>}{lastRefresh && <span>· {snapshot ? 'data as of' : 'refreshed'} {lastRefresh.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}</div>
         {liveCapable && live && !needReconnect && <span className="small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="live-dot" /> Live</span>}
         <button className="tb-btn" onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light')} title="Theme">{theme === 'light' ? '☀ Light' : theme === 'dark' ? '☾ Dark' : '◐ Auto'}</button>

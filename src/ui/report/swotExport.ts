@@ -25,7 +25,7 @@ export function swotPdf(company: string, swot: SwotResult, evidence: EvidenceIte
     head: [TYPES.map((t) => `${t.toUpperCase()}S (${swot.counts[t]})`)],
     body: Array.from({ length: Math.max(...TYPES.map((t) => swot.items.filter((i) => i.type === t).length), 1) }, (_, r) => TYPES.map((t) => { const it = swot.items.filter((i) => i.type === t)[r]; return it ? T(`${it.title}${it.type === 'Weakness' || it.type === 'Threat' ? ` [${it.severity}]` : ''}`) : ''; })),
     styles: { fontSize: 8, cellPadding: 1.6, valign: 'top' }, theme: 'grid',
-    headStyles: { fillColor: [11, 27, 63], textColor: 255 },
+    headStyles: { fillColor: [17, 17, 17], textColor: 255 },
     didParseCell: (d) => { if (d.section === 'head') d.cell.styles.fillColor = COLORS[TYPES[d.column.index]]; },
   });
   // detail tables
