@@ -34,6 +34,7 @@ export function Home({ files, onFiles, onDropItems, onPick, onPickFolder, onClea
           <img src={logoFull} alt="INGOVIQ" />
           <a className="small" href="mailto:ingoviqai@gmail.com">✉ ingoviqai@gmail.com</a>
           <a className="small" href="https://www.instagram.com/ingoviq_ai/" target="_blank" rel="noopener noreferrer">Instagram @ingoviq_ai</a>
+          <a className="small" href="https://www.linkedin.com/company/145504927/" target="_blank" rel="noopener noreferrer">INGOVIQ on LinkedIn</a>
         </div>
       </div>
       <div className={`drop ${over ? 'over' : ''}`}
